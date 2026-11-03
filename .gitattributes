@@ -1,0 +1,9 @@
+# 운영체제와 상관없이 저장소와 작업 폴더의 줄바꿈을 LF로 통일 (Prettier 기준과 맞춤)
+* text=auto eol=lf
+
+# 바이너리
+*.png binary
+*.jpg binary
+*.ico binary
+*.wav binary
+*.webm binary
