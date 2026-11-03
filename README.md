@@ -2,7 +2,30 @@
 
 허밍 한 소절을 녹음하면 음표로 바꾸고, 그 멜로디에 맞는 키와 코드를 찾아 드럼, 베이스, 피아노 반주를 붙여 주는 웹 서비스입니다. 틀린 음은 피아노롤에서 고치고, 트랙 볼륨을 맞춘 뒤 WAV로 내보낼 수 있습니다.
 
-지금은 기획 단계라 코드는 아직 없습니다. 이 저장소에는 기획 문서, 화면 목업, 서비스 흐름도가 들어 있습니다.
+지금은 개발 초기 단계입니다. 프로젝트 뼈대(Next.js, `SongState` 타입, store, 스튜디오 화면 틀)가 들어 있고, 기능은 역할별로 개발을 시작합니다.
+
+## 실행 방법
+
+Node.js 24 기준입니다.
+
+```bash
+npm install
+cp .env.example .env.local   # 값 채우기
+npm run dev                  # http://localhost:3000, 스튜디오는 /studio/new
+```
+
+| 명령 | 내용 |
+|---|---|
+| `npm run dev` | 개발 서버 |
+| `npm run build` | 프로덕션 빌드 |
+| `npm run lint` | ESLint |
+| `npm run typecheck` | 라우트 타입 생성 후 TypeScript 검사 |
+| `npm test` | Vitest 감시 모드 (`npm run test:run`은 한 번만 실행) |
+| `npm run format` | Prettier로 포맷 (`format:check`는 검사만) |
+
+테스트 하나만 돌릴 때는 `npx vitest run src/store/songStore.test.ts`처럼 파일 경로를 넘기거나 `-t "테스트 이름"`을 붙입니다. 테스트 파일은 대상 파일 옆에 `*.test.ts`로 둡니다.
+
+PR을 올리기 전에 `npm run lint`, `npm run typecheck`, `npm run test:run`이 통과하는지 확인해 주세요.
 
 ## 만드는 이유
 
