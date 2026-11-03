@@ -1,0 +1,5 @@
+# 기획 문서와 목업은 포맷하지 않음
+*.md
+*.html
+*.drawio
+package-lock.json
