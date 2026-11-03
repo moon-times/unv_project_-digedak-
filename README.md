@@ -2,7 +2,30 @@
 
 허밍 한 소절을 녹음하면 음표로 바꾸고, 그 멜로디에 맞는 키와 코드를 찾아 드럼, 베이스, 피아노 반주를 붙여 주는 웹 서비스입니다. 틀린 음은 피아노롤에서 고치고, 트랙 볼륨을 맞춘 뒤 WAV로 내보낼 수 있습니다.
 
-지금은 기획 단계라 코드는 아직 없습니다. 이 저장소에는 기획 문서, 화면 목업, 서비스 흐름도가 들어 있습니다.
+지금은 개발 초기 단계입니다. 프로젝트 뼈대(Next.js, `SongState` 타입, store, 스튜디오 화면 틀)가 들어 있고, 기능은 역할별로 개발을 시작합니다.
+
+## 실행 방법
+
+Node.js 24 기준입니다.
+
+```bash
+npm install
+cp .env.example .env.local   # 값 채우기
+npm run dev                  # http://localhost:3000, 스튜디오는 /studio/new
+```
+
+| 명령 | 내용 |
+|---|---|
+| `npm run dev` | 개발 서버 |
+| `npm run build` | 프로덕션 빌드 |
+| `npm run lint` | ESLint |
+| `npm run typecheck` | 라우트 타입 생성 후 TypeScript 검사 |
+| `npm test` | Vitest 감시 모드 (`npm run test:run`은 한 번만 실행) |
+| `npm run format` | Prettier로 포맷 (`format:check`는 검사만) |
+
+테스트 하나만 돌릴 때는 `npx vitest run src/store/songStore.test.ts`처럼 파일 경로를 넘기거나 `-t "테스트 이름"`을 붙입니다. 테스트 파일은 대상 파일 옆에 `*.test.ts`로 둡니다.
+
+PR을 올리기 전에 `npm run lint`, `npm run typecheck`, `npm run test:run`이 통과하는지 확인해 주세요.
 
 ## 만드는 이유
 
@@ -21,7 +44,7 @@
 
 녹음부터 믹싱까지는 로그인 없이 쓸 수 있습니다. WAV 다운로드와 프로젝트 저장을 할 때만 로그인(이메일, GitHub, Google)이 필요하고, 로그인하면 게스트로 작업하던 곡이 그대로 저장된 채 스튜디오로 돌아옵니다.
 
-스튜디오 화면은 가운데 타임라인(코드 레인, 멜로디 피아노롤, 드럼, 베이스, 건반 줄)이 항상 보이고, 상단 진행 바의 단계(녹음, 보정과 AI 분석, 반주, 믹싱)에 따라 오른쪽 도구 패널만 바뀌는 구조입니다. 화면 구성은 [딕으닥 화면 목업.html](딕으닥%20화면%20목업.html)에서 볼 수 있습니다.
+스튜디오 화면은 가운데 타임라인(코드 레인, 멜로디 피아노롤, 드럼, 베이스, 건반 줄)이 항상 보이고, 상단 진행 바의 단계(녹음, 보정과 AI 분석, 반주, 믹싱)에 따라 오른쪽 도구 패널만 바뀌는 구조입니다. 화면 구성은 [딕으닥 화면 목업.html](docs/design/딕으닥%20화면%20목업.html)에서 볼 수 있습니다.
 
 ## 분석은 규칙 엔진, LLM은 설명 다듬기
 
@@ -76,6 +99,6 @@ MusicGen 같은 오디오 생성형 AI는 쓰지 않습니다. 비용과 속도,
 
 - [docs/01_project_overview.md](docs/01_project_overview.md): 기능 명세, 시스템 구조, `SongState` 타입, Supabase 테이블과 RLS, 폴더 구조, 리스크 대응
 - [docs/02_role_assignment.md](docs/02_role_assignment.md): 역할별 책임 범위와 산출물 인터페이스, 협업 규칙
-- [딕으닥 화면 목업.html](딕으닥%20화면%20목업.html): 화면 목업 (브라우저로 열기)
-- [딕으닥_서비스_flow.drawio](딕으닥_서비스_flow.drawio): 서비스 흐름도 (draw.io로 열기)
-- [딕으닥_아이콘.png](딕으닥_아이콘.png): 서비스 아이콘
+- [딕으닥 화면 목업.html](docs/design/딕으닥%20화면%20목업.html): 화면 목업 (브라우저로 열기)
+- [딕으닥_서비스_flow.drawio](docs/design/딕으닥_서비스_flow.drawio): 서비스 흐름도 (draw.io로 열기)
+- [딕으닥_아이콘.png](docs/design/딕으닥_아이콘.png): 서비스 아이콘
