@@ -3,3 +3,7 @@
 *.html
 *.drawio
 package-lock.json
+
+# Supabase CLI가 생성하는 파일
+src/types/database.ts
+supabase/.temp
