@@ -22,8 +22,14 @@ npm run dev                  # http://localhost:3000, 스튜디오는 /studio/ne
 | `npm run typecheck` | 라우트 타입 생성 후 TypeScript 검사 |
 | `npm test` | Vitest 감시 모드 (`npm run test:run`은 한 번만 실행) |
 | `npm run format` | Prettier로 포맷 (`format:check`는 검사만) |
+| `npm run db:push` | `supabase/migrations`의 새 마이그레이션을 Supabase DB에 적용 |
+| `npm run db:types` | DB 구조로 `src/types/database.ts` 타입 다시 생성 |
 
 테스트 하나만 돌릴 때는 `npx vitest run src/store/songStore.test.ts`처럼 파일 경로를 넘기거나 `-t "테스트 이름"`을 붙입니다. 테스트 파일은 대상 파일 옆에 `*.test.ts`로 둡니다.
+
+### DB 변경
+
+DB 구조(테이블, RLS, Storage 정책)는 **`supabase/migrations/`의 SQL 파일로만** 바꿉니다. 대시보드 SQL Editor에서 직접 고치면 마이그레이션 기록과 실제 DB가 어긋납니다. 처음 한 번은 `npx supabase login`과 `npx supabase link --project-ref <프로젝트 ID>`가 필요하고, 마이그레이션을 적용한 뒤에는 `npm run db:types`로 타입을 다시 만들어 함께 커밋합니다.
 
 PR을 올리기 전에 `npm run lint`, `npm run typecheck`, `npm run test:run`이 통과하는지 확인해 주세요.
 
