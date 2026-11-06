@@ -63,6 +63,7 @@ describe("useSongStore", () => {
       dirty: false,
       saveStatus: "saved",
     });
+    expect(useSongStore.getState().lastSavedAt).toBeTypeOf("number");
   });
 
   test("loadSong은 화면 상태를 초기화하고 dirty를 끈다", () => {
