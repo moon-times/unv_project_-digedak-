@@ -1,5 +1,5 @@
 // 곡 상태 전역 store. 모든 화면이 같은 SongState를 읽고 고칩니다.
-// song은 DB(projects.song)에 그대로 저장되고, 그 밖의 값(step, saveStatus, dirty)은 화면 전용입니다.
+// song은 DB(projects.song)에 그대로 저장되고, 그 밖의 값(step, saveStatus, dirty, lastSavedAt)은 화면 전용입니다.
 import { create } from "zustand";
 import {
   createEmptySong,
@@ -38,6 +38,8 @@ type SongStore = {
   saveStatus: SaveStatus;
   /** 마지막 저장 이후 song이 바뀌었는지 (자동 저장 판단용) */
   dirty: boolean;
+  /** 마지막으로 저장을 마친 시각(ms). 헤더의 "10:42에 자동 저장됨" 표시용 */
+  lastSavedAt: number | null;
 
   setTitle: (title: string) => void;
   setBpm: (bpm: number) => void;
@@ -66,6 +68,7 @@ const initialState = () => ({
   step: "record" as StudioStep,
   saveStatus: "idle" as SaveStatus,
   dirty: false,
+  lastSavedAt: null as number | null,
 });
 
 export const useSongStore = create<SongStore>()((set) => {
@@ -101,6 +104,7 @@ export const useSongStore = create<SongStore>()((set) => {
 
     setStep: (step) => set({ step }),
     setSaveStatus: (saveStatus) => set({ saveStatus }),
-    markSaved: () => set({ saveStatus: "saved", dirty: false }),
+    markSaved: () =>
+      set({ saveStatus: "saved", dirty: false, lastSavedAt: Date.now() }),
   };
 });
