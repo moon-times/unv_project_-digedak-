@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { Timeline } from "@/features/piano-roll/Timeline";
 import {
   getAvailableSteps,
   STUDIO_STEPS,
@@ -53,10 +54,8 @@ export function Studio({ projectId }: { projectId: string | null }) {
 
       <div className="flex min-h-0 flex-1">
         <main className="min-w-0 flex-1 px-5 pt-4 pb-5">
-          <Slot
-            label="타임라인 (코드 레인 · 멜로디 피아노롤 · 드럼 · 베이스 · 건반)"
-            owner="A"
-          />
+          {/* TODO(B): 재생 위치가 정해지면 position으로 넘기기 */}
+          <Timeline />
         </main>
         <aside className="flex w-[380px] shrink-0 flex-col gap-4 border-l-2 border-foreground/10 px-5 pt-5 pb-5">
           <div className="min-h-0 flex-1">{PANELS[step]}</div>
