@@ -23,6 +23,13 @@ describe("bassPitch", () => {
 
   it("슬래시 코드는 지정된 베이스음", () => {
     expect(bassPitch(chord("C/E"), "root")).toBe(28);
+    // 5도 자리는 베이스음 E 위 5도(B)가 아니라 코드음 G
+    expect(bassPitch(chord("C/E"), "fifth")).toBe(31);
+  });
+
+  it("dim·aug 코드의 5도는 코드에 맞게 반음 내리거나 올린다", () => {
+    expect(bassPitch(chord("Bdim"), "fifth")).toBe(41); // B1(35) 위 F2
+    expect(bassPitch(chord("Caug"), "fifth")).toBe(44); // C2(36) 위 G#2
   });
 });
 
