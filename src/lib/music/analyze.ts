@@ -8,20 +8,28 @@ import { recommendStyle, suggestBpm } from "./style";
 import { keyName } from "./theory";
 
 const DEFAULT_BPM = 100;
+const DEFAULT_STEPS_PER_BAR = 16;
 
 export type AnalyzeOptions = {
-  /** 한 마디의 step 수. 4/4박자는 16 (1 step = 16분음표) */
+  /**
+   * 한 마디의 step 수. 4/4박자는 16 (1 step = 16분음표).
+   * 곡 박자표를 따르려면 `stepsPerBar(song.timeSignature)` (`@/lib/transport`)를 넘깁니다.
+   */
   stepsPerBar?: number;
 };
 
 export function analyzeSong(
   melody: Note[],
   bpm: number,
-  { stepsPerBar = 16 }: AnalyzeOptions = {},
+  { stepsPerBar = DEFAULT_STEPS_PER_BAR }: AnalyzeOptions = {},
 ): AnalysisResult {
   const tempo = Number.isFinite(bpm) && bpm > 0 ? bpm : DEFAULT_BPM;
+  const barSteps =
+    Number.isFinite(stepsPerBar) && stepsPerBar > 0
+      ? stepsPerBar
+      : DEFAULT_STEPS_PER_BAR;
   const { key, histogram } = detectKey(melody);
-  const { chords } = assignChords(melody, key, stepsPerBar);
+  const { chords } = assignChords(melody, key, barSteps);
 
   const notesPerBar = chords.length === 0 ? 0 : melody.length / chords.length;
   const recommendedStyle = recommendStyle({
