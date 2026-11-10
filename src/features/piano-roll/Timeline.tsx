@@ -3,13 +3,20 @@
 // 스튜디오 가운데의 고정 타임라인 (보기 전용).
 // 위에서부터 마디 번호, 코드, 멜로디 피아노롤, 드럼 · 베이스 · 건반 줄입니다.
 // 색은 공통 디자인 토큰이 생기기 전까지 기본 색(foreground)의 농도로만 구분합니다 (docs/design/README.md).
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { stepsPerBar } from "@/app/studio/[id]/_components/transport";
 import { useSongStore } from "@/store/songStore";
 import type { Note, Step } from "@/types/song";
-import { STEP_WIDTH, noteName, pitchRange, timelineSteps } from "./layout";
+import {
+  LABEL_WIDTH,
+  fitStepWidth,
+  noteName,
+  pitchRange,
+  timelineSteps,
+  type TimelineSong,
+} from "./layout";
 
-const LABEL_WIDTH = 64;
 const MELODY_ROW_HEIGHT = 10;
 const ACCOMPANIMENT_HEIGHT = 48;
 
@@ -17,33 +24,49 @@ const ACCOMPANIMENT_HEIGHT = 48;
  * @param position 재생 위치(step). B의 재생 엔진이 연결되기 전까지는 비워 둡니다.
  */
 export function Timeline({ position }: { position?: Step }) {
-  const song = useSongStore((s) => s.song);
+  // 제목 · 빠르기 등이 바뀔 때는 다시 그리지 않도록 그리는 데 필요한 값만 구독합니다.
+  const song: TimelineSong = useSongStore(
+    useShallow((s) => ({
+      melody: s.song.melody,
+      chords: s.song.chords,
+      accompaniment: s.song.accompaniment,
+      timeSignature: s.song.timeSignature,
+    })),
+  );
+  const [sectionRef, sectionWidth] = useContentWidth<HTMLElement>();
   const totalSteps = timelineSteps(song);
+  const stepWidth = fitStepWidth(sectionWidth, totalSteps);
   const barSteps = stepsPerBar(song.timeSignature);
   const beatSteps = 16 / song.timeSignature[1];
   const { drums = [], bass = [], keys = [] } = song.accompaniment ?? {};
 
   const grid = (
-    <Grid totalSteps={totalSteps} barSteps={barSteps} beatSteps={beatSteps} />
+    <Grid
+      totalSteps={totalSteps}
+      barSteps={barSteps}
+      beatSteps={beatSteps}
+      stepWidth={stepWidth}
+    />
   );
   const [low, high] = pitchRange(song.melody);
   const melodyRows = high - low + 1;
 
   return (
     <section
+      ref={sectionRef}
       aria-label="타임라인"
       className="h-full overflow-auto rounded-lg border-2 border-foreground/15"
     >
       <div
         className="relative"
-        style={{ width: LABEL_WIDTH + totalSteps * STEP_WIDTH }}
+        style={{ width: LABEL_WIDTH + totalSteps * stepWidth }}
       >
-        <Row label="" height={24} grid={grid}>
+        <Row label="마디" height={24} grid={grid}>
           {Array.from({ length: totalSteps / barSteps }, (_, bar) => (
             <span
               key={bar}
               className="absolute top-1 pl-1 text-xs tabular-nums opacity-60"
-              style={{ left: bar * barSteps * STEP_WIDTH }}
+              style={{ left: bar * barSteps * stepWidth }}
             >
               {bar + 1}
             </span>
@@ -52,16 +75,16 @@ export function Timeline({ position }: { position?: Step }) {
 
         <Row label="코드" height={32} grid={grid} lane="chords">
           {song.chords.length === 0 ? (
-            <EmptyLane text="② 보정 단계에서 코드가 붙어요" />
+            <EmptyLane text="② 분석하면 마디마다 코드가 붙어요" />
           ) : (
-            song.chords.map((chord, i) => (
+            song.chords.map((chord) => (
               <div
-                key={i}
+                key={chord.start}
                 data-chord
                 className="absolute top-1 bottom-1 truncate rounded-sm border border-foreground/40 bg-foreground/10 px-1 text-xs leading-[22px] font-semibold"
                 style={{
-                  left: chord.start * STEP_WIDTH,
-                  width: chord.duration * STEP_WIDTH,
+                  left: chord.start * stepWidth,
+                  width: chord.duration * stepWidth,
                 }}
               >
                 {chord.symbol}
@@ -84,6 +107,7 @@ export function Timeline({ position }: { position?: Step }) {
               low={low}
               high={high}
               height={melodyRows * MELODY_ROW_HEIGHT}
+              stepWidth={stepWidth}
               className="bg-foreground/70"
               titled
             />
@@ -111,6 +135,7 @@ export function Timeline({ position }: { position?: Step }) {
                 notes={notes}
                 {...rangeOf(notes)}
                 height={ACCOMPANIMENT_HEIGHT}
+                stepWidth={stepWidth}
                 className="bg-foreground/45"
               />
             )}
@@ -122,7 +147,7 @@ export function Timeline({ position }: { position?: Step }) {
             data-playhead
             aria-hidden
             className="pointer-events-none absolute top-0 bottom-0 w-0.5 bg-foreground"
-            style={{ left: LABEL_WIDTH + position * STEP_WIDTH }}
+            style={{ left: LABEL_WIDTH + position * stepWidth }}
           />
         )}
       </div>
@@ -173,10 +198,12 @@ function Grid({
   totalSteps,
   barSteps,
   beatSteps,
+  stepWidth,
 }: {
   totalSteps: number;
   barSteps: number;
   beatSteps: number;
+  stepWidth: number;
 }) {
   return Array.from({ length: totalSteps / beatSteps }, (_, beat) => {
     const step = beat * beatSteps;
@@ -185,7 +212,7 @@ function Grid({
         key={beat}
         aria-hidden
         className={`absolute top-0 bottom-0 border-l ${step % barSteps === 0 ? "border-foreground/20" : "border-foreground/5"}`}
-        style={{ left: step * STEP_WIDTH }}
+        style={{ left: step * stepWidth }}
       />
     );
   });
@@ -196,6 +223,7 @@ function Notes({
   low,
   high,
   height,
+  stepWidth,
   className,
   titled = false,
 }: {
@@ -203,19 +231,21 @@ function Notes({
   low: number;
   high: number;
   height: number;
+  stepWidth: number;
   className: string;
   titled?: boolean;
 }) {
   const rowHeight = height / (high - low + 1);
-  return notes.map((note, i) => (
+  return notes.map((note) => (
     <div
-      key={i}
+      // 순서가 아니라 위치 · 높이로 구분해야 편집(삭제 · 이동) 때 다른 음표 요소가 재사용되지 않습니다
+      key={`${note.start}:${note.pitch}`}
       data-note
       title={titled ? noteName(note.pitch) : undefined}
       className={`absolute rounded-[2px] ${className}`}
       style={{
-        left: note.start * STEP_WIDTH,
-        width: note.duration * STEP_WIDTH - 1,
+        left: note.start * stepWidth,
+        width: note.duration * stepWidth - 1,
         top: (high - note.pitch) * rowHeight,
         height: Math.max(2, rowHeight - 1),
         opacity: 0.4 + note.velocity * 0.6,
@@ -253,4 +283,20 @@ function EmptyLane({ text }: { text: string }) {
       {text}
     </span>
   );
+}
+
+/** 요소의 안쪽 폭(px). 처음 그릴 때와 ResizeObserver가 없는 환경(테스트)에서는 0 */
+function useContentWidth<T extends HTMLElement>() {
+  const ref = useRef<T>(null);
+  const [width, setWidth] = useState(0);
+  useEffect(() => {
+    const element = ref.current;
+    if (!element || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(([entry]) =>
+      setWidth(entry.contentRect.width),
+    );
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+  return [ref, width] as const;
 }

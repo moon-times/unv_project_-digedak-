@@ -1,6 +1,15 @@
 import { describe, expect, test } from "vitest";
 import { createEmptySong } from "@/types/song";
-import { MIN_BARS, noteName, pitchRange, timelineSteps } from "./layout";
+import {
+  LABEL_WIDTH,
+  MIN_BARS,
+  MIN_STEP_WIDTH,
+  STEP_WIDTH,
+  fitStepWidth,
+  noteName,
+  pitchRange,
+  timelineSteps,
+} from "./layout";
 
 const note = (pitch: number, start = 0, duration = 4) => ({
   pitch,
@@ -24,8 +33,9 @@ describe("timelineSteps", () => {
   });
 
   test("곡이 길면 마지막 음이 들어가는 마디까지", () => {
-    const song = { ...createEmptySong(), melody: [note(60, 100, 4)] };
-    expect(timelineSteps(song)).toBe(7 * 16);
+    // 140 + 4 = 144 step → 9마디
+    const song = { ...createEmptySong(), melody: [note(60, 140, 4)] };
+    expect(timelineSteps(song)).toBe(9 * 16);
   });
 
   test("3/4박자는 한 마디가 12 step", () => {
@@ -51,5 +61,19 @@ describe("pitchRange", () => {
 
   test("음역이 넓으면 위아래 한 음씩만 여유를 둔다", () => {
     expect(pitchRange([note(55), note(79)])).toEqual([54, 80]);
+  });
+});
+
+describe("fitStepWidth", () => {
+  test("칸 폭을 모르면 기본 폭", () => {
+    expect(fitStepWidth(0, 128)).toBe(STEP_WIDTH);
+  });
+
+  test("이름 칸을 뺀 폭에 전체 길이가 꽉 차게", () => {
+    expect(fitStepWidth(LABEL_WIDTH + 1280, 128)).toBe(10);
+  });
+
+  test("곡이 길어 너무 좁아지면 최소 폭 (가로 스크롤)", () => {
+    expect(fitStepWidth(LABEL_WIDTH + 1000, 1000)).toBe(MIN_STEP_WIDTH);
   });
 });
