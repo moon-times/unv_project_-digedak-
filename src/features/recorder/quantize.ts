@@ -1,4 +1,6 @@
-// 초 단위 음표를 박자 격자에 맞춰 step 단위 Note로 바꿉니다. 1 step = 16분음표.
+// 음표를 박자 격자에 맞춥니다. 1 step = 16분음표.
+// - quantize: 녹음 직후, 초 단위 음표 → step 단위 Note
+// - snapNotes: 이미 step 단위인 멜로디를 더 큰 격자로 다시 맞추기 (보정 단계의 "박자 맞추기")
 import type { Note, Step } from "@/types/song";
 import type { RawNote } from "./notes";
 
@@ -12,8 +14,33 @@ export function quantize(
   grid: Step = 1,
 ): Note[] {
   const secondsPerStep = 60 / bpm / 4;
-  const snap = (seconds: number) =>
-    Math.max(0, Math.round(seconds / secondsPerStep / grid) * grid);
+  return fitToGrid(
+    notes.map((note) => ({
+      pitch: Math.round(note.pitch),
+      start: note.start / secondsPerStep,
+      end: note.end / secondsPerStep,
+      velocity: note.velocity,
+    })),
+    grid,
+  );
+}
+
+/**
+ * @param grid 맞출 격자 크기(step). 목업의 스냅 단위: 1(1/16) · 2(1/8) · 4(1박) · 마디 길이(1마디)
+ */
+export function snapNotes(notes: Note[], grid: Step): Note[] {
+  return fitToGrid(
+    notes.map((note) => ({ ...note, end: note.start + note.duration })),
+    grid,
+  );
+}
+
+/** start · end가 step 단위(소수 가능)인 음표를 grid 칸에 맞추고 겹침을 정리합니다 */
+function fitToGrid(
+  notes: { pitch: number; start: number; end: number; velocity: number }[],
+  grid: Step,
+): Note[] {
+  const snap = (step: number) => Math.max(0, Math.round(step / grid) * grid);
 
   const snapped = notes
     .map((note) => {
@@ -21,7 +48,7 @@ export function quantize(
       const end = Math.max(snap(note.end), start + grid);
       return {
         note: {
-          pitch: Math.min(127, Math.max(0, Math.round(note.pitch))),
+          pitch: Math.min(127, Math.max(0, note.pitch)),
           start,
           duration: end - start,
           velocity: Math.min(1, Math.max(0, note.velocity)),

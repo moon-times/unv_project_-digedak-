@@ -48,11 +48,15 @@ export function framesToNotes(
   const interval = frameInterval(frames);
 
   // 1. 같은 음이 이어지는 프레임끼리 묶기. 무음 프레임에서 끊습니다.
-  const segments: (RawNote & { volumes: number[] })[] = [];
-  let current: (RawNote & { volumes: number[] }) | null = null;
+  const segments: Segment[] = [];
+  let current: Segment | null = null;
   frames.forEach((frame, i) => {
     const pitch = pitches[i];
-    const end = frames[i + 1]?.time ?? frame.time + interval;
+    // 다음 프레임이 늦게 와도(탭 전환, 메인 스레드 멈춤) 음이 늘어나지 않게 프레임 간격 2배까지만
+    const end = Math.min(
+      frames[i + 1]?.time ?? frame.time + interval,
+      frame.time + interval * 2,
+    );
     if (pitch === null) {
       current = null;
       return;
@@ -66,22 +70,14 @@ export function framesToNotes(
     if (frame.volume !== undefined) current.volumes.push(frame.volume);
   });
 
-  // 2. 짧은 잡음을 버리고, 3. 잡음 때문에 끊긴 같은 음을 다시 잇기
-  const notes: (RawNote & { volumes: number[] })[] = [];
-  for (const segment of segments) {
-    if (segment.end - segment.start < minDuration) continue;
-    const last = notes.at(-1);
-    if (
-      last &&
-      last.pitch === segment.pitch &&
-      segment.start - last.end <= maxGap
-    ) {
-      last.end = segment.end;
-      last.volumes.push(...segment.volumes);
-    } else {
-      notes.push(segment);
-    }
-  }
+  // 2. 무음 프레임 때문에 잘게 끊긴 같은 음을 먼저 잇고(짧은 조각끼리 모여 한 음이 됨),
+  // 3. 그래도 짧은 조각은 잡음으로 버린 뒤, 4. 잡음이 빠지며 붙게 된 같은 음을 다시 잇습니다.
+  const notes = mergeSamePitch(
+    mergeSamePitch(segments, maxGap).filter(
+      (s) => s.end - s.start >= minDuration,
+    ),
+    maxGap,
+  );
 
   return notes.map(({ pitch, start, end, volumes }) => ({
     pitch,
@@ -91,6 +87,30 @@ export function framesToNotes(
       ? Math.min(1, volumes.reduce((a, b) => a + b, 0) / volumes.length)
       : DEFAULT_VELOCITY,
   }));
+}
+
+type Segment = RawNote & { volumes: number[] };
+
+/** 바로 앞 음과 높이가 같고 틈이 maxGap 이하면 한 음으로 잇습니다 */
+function mergeSamePitch(segments: Segment[], maxGap: number) {
+  const merged: Segment[] = [];
+  for (const segment of segments) {
+    const last = merged.at(-1);
+    if (
+      last &&
+      last.pitch === segment.pitch &&
+      segment.start - last.end <= maxGap
+    ) {
+      merged[merged.length - 1] = {
+        ...last,
+        end: segment.end,
+        volumes: [...last.volumes, ...segment.volumes],
+      };
+    } else {
+      merged.push(segment);
+    }
+  }
+  return merged;
 }
 
 /** 소리가 있는 프레임마다 앞뒤 radius개 프레임의 중앙값으로 음 높이를 바꿉니다 */

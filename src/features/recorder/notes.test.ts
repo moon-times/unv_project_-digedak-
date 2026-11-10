@@ -56,6 +56,29 @@ describe("framesToNotes", () => {
     expect(notes[0].end).toBeCloseTo(0.83);
   });
 
+  test("검출이 짧게 자주 끊긴 긴 음도 사라지지 않고 한 음이 된다", () => {
+    // 0.04초 소리 + 0.02초 무음이 1초 동안 반복 → 조각 하나하나는 minDuration보다 짧음
+    const parts: [number | null, number][] = [];
+    for (let i = 0; i < 16; i++) parts.push([C4, 0.04], [null, 0.02]);
+    const notes = framesToNotes(hum(...parts));
+    expect(notes).toHaveLength(1);
+    expect(notes[0].pitch).toBe(60);
+    expect(notes[0].end - notes[0].start).toBeGreaterThan(0.9);
+  });
+
+  test("다른 음 잡음이 끼어 끊긴 같은 음도 다시 잇는다", () => {
+    const notes = framesToNotes(hum([C4, 0.4], [E4, 0.03], [C4, 0.4]));
+    expect(notes.map((n) => n.pitch)).toEqual([60]);
+  });
+
+  test("다음 프레임이 늦게 와도 앞 음이 늘어나지 않는다", () => {
+    const frames = hum([C4, 0.3]);
+    // 0.29초 다음 프레임이 0.8초에야 도착 (탭 전환 등)
+    frames.push({ time: 0.8, frequency: E4 }, { time: 0.81, frequency: E4 });
+    const [first] = framesToNotes(frames, { minDuration: 0 });
+    expect(first.end).toBeCloseTo(0.31);
+  });
+
   test("음 높이가 한 프레임 튀어도 음표가 쪼개지지 않는다", () => {
     const frames = hum([C4, 0.5]);
     frames[20].frequency = D4;

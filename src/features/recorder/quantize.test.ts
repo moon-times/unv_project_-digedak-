@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { NoteSchema } from "@/lib/schemas";
 import type { RawNote } from "./notes";
-import { quantize } from "./quantize";
+import { quantize, snapNotes } from "./quantize";
 
 // 120 BPM에서 1 step(16분음표) = 0.125초
 const raw = (pitch: number, start: number, end: number): RawNote => ({
@@ -57,5 +57,33 @@ describe("quantize", () => {
     for (const note of notes) {
       expect(NoteSchema.safeParse(note).success).toBe(true);
     }
+  });
+});
+
+describe("snapNotes", () => {
+  const note = (pitch: number, start: number, duration: number) => ({
+    pitch,
+    start,
+    duration,
+    velocity: 0.8,
+  });
+
+  test("step 단위 멜로디를 더 큰 격자로 다시 맞춘다", () => {
+    // 1박(4 step) 격자
+    expect(snapNotes([note(60, 1, 3), note(62, 5, 4)], 4)).toEqual([
+      note(60, 0, 4),
+      note(62, 4, 4),
+    ]);
+  });
+
+  test("1마디 격자에서는 같은 마디에 걸린 음 중 긴 음만 남는다", () => {
+    expect(snapNotes([note(60, 0, 3), note(64, 2, 10)], 16)).toEqual([
+      note(64, 0, 16),
+    ]);
+  });
+
+  test("이미 격자에 맞는 멜로디는 그대로", () => {
+    const melody = [note(60, 0, 4), note(62, 4, 2), note(64, 8, 8)];
+    expect(snapNotes(melody, 2)).toEqual(melody);
   });
 });
