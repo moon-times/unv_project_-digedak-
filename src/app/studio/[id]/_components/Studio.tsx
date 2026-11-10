@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { useShallow } from "zustand/react/shallow";
+import { Timeline } from "@/features/piano-roll/Timeline";
 import {
   getAvailableSteps,
   STUDIO_STEPS,
@@ -41,10 +43,9 @@ export function Studio({ projectId }: { projectId: string | null }) {
   // TODO(C §4): 게스트 여부는 projectId가 아니라 로그인 상태로 판단
   const isGuest = projectId === null;
   const step = useSongStore((s) => s.step);
-  const song = useSongStore((s) => s.song);
+  // song 전체를 구독하면 제목 한 글자마다 타임라인까지 다시 그려지므로, 열린 단계 목록만 구독합니다.
+  const available = useSongStore(useShallow((s) => getAvailableSteps(s.song)));
   const setStep = useSongStore((s) => s.setStep);
-
-  const available = getAvailableSteps(song);
 
   return (
     <div className="flex h-dvh flex-col">
@@ -53,10 +54,8 @@ export function Studio({ projectId }: { projectId: string | null }) {
 
       <div className="flex min-h-0 flex-1">
         <main className="min-w-0 flex-1 px-5 pt-4 pb-5">
-          <Slot
-            label="타임라인 (코드 레인 · 멜로디 피아노롤 · 드럼 · 베이스 · 건반)"
-            owner="A"
-          />
+          {/* TODO(B): 재생 위치가 정해지면 position으로 넘기기 */}
+          <Timeline />
         </main>
         <aside className="flex w-[380px] shrink-0 flex-col gap-4 border-l-2 border-foreground/10 px-5 pt-5 pb-5">
           <div className="min-h-0 flex-1">{PANELS[step]}</div>
