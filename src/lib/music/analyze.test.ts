@@ -52,6 +52,14 @@ describe("analyzeSong", () => {
     expect(analyzeSong(TUNE, 0).bpmSuggestion).toBe(100);
     expect(analyzeSong(TUNE, Number.NaN).bpmSuggestion).toBe(100);
   });
+
+  it("마디 길이가 잘못 들어와도 멈추지 않고 4/4박자로 분석한다", () => {
+    const expected = analyzeSong(TUNE, 100).chords;
+    expect(analyzeSong(TUNE, 100, { stepsPerBar: 0 }).chords).toEqual(expected);
+    expect(analyzeSong(TUNE, 100, { stepsPerBar: Number.NaN }).chords).toEqual(
+      expected,
+    );
+  });
 });
 
 describe("스타일 규칙", () => {

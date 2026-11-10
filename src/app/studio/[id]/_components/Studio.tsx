@@ -20,7 +20,7 @@ import {
 } from "./icons";
 import { ProgressBar } from "./ProgressBar";
 import { Slot } from "./Slot";
-import { countBars, formatTime, songDurationSeconds } from "./transport";
+import { countBars, formatTime, songDurationSeconds } from "@/lib/transport";
 
 // A·B 패널이 준비되면 Slot 대신 해당 컴포넌트를 넣습니다.
 const PANELS: Record<StudioStep, ReactNode> = {

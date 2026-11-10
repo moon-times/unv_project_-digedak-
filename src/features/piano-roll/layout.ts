@@ -1,5 +1,5 @@
 // 타임라인 배치 계산. 화면과 떼어 두어 테스트하기 쉽게 합니다.
-import { stepsPerBar } from "@/app/studio/[id]/_components/transport";
+import { stepsPerBar } from "@/lib/transport";
 import type { Note, SongState } from "@/types/song";
 
 /** 타임라인이 그리는 데 쓰는 곡 데이터. 제목 · 빠르기가 바뀌어도 다시 그리지 않도록 이것만 구독합니다 */

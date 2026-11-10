@@ -5,7 +5,7 @@
 // 색은 공통 디자인 토큰이 생기기 전까지 기본 색(foreground)의 농도로만 구분합니다 (docs/design/README.md).
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useShallow } from "zustand/react/shallow";
-import { stepsPerBar } from "@/app/studio/[id]/_components/transport";
+import { stepsPerBar } from "@/lib/transport";
 import { useSongStore } from "@/store/songStore";
 import type { Note, Step } from "@/types/song";
 import {
