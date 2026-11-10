@@ -22,12 +22,13 @@ export function usePlaybackStep(): number {
 
 /**
  * store의 곡이 바뀌면 재생기에 반영합니다. 스튜디오 화면에서 한 번만 부릅니다.
+ * 화면이 사라지면 재생을 멈춥니다.
  * 제목·저장 상태처럼 소리와 상관없는 변경은 무시합니다.
  */
 export function useSyncPlayerWithSong(): void {
   useEffect(() => {
     void player.load(useSongStore.getState().song);
-    return useSongStore.subscribe((state, previous) => {
+    const unsubscribe = useSongStore.subscribe((state, previous) => {
       const song = state.song;
       const before = previous.song;
       if (
@@ -40,5 +41,10 @@ export function useSyncPlayerWithSong(): void {
         void player.load(song);
       }
     });
+    // 재생기는 앱 전체에 하나라서, 스튜디오를 나갈 때 멈추지 않으면 다른 화면에서도 계속 재생됩니다.
+    return () => {
+      unsubscribe();
+      player.stop();
+    };
   }, []);
 }

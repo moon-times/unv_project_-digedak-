@@ -239,7 +239,7 @@ describe("Player", () => {
     );
   });
 
-  it("악기 이름이 바뀐 트랙만 다시 불러오고, 곡을 다시 받으면 Part를 새로 만든다", async () => {
+  it("악기 이름이 바뀐 트랙만 다시 불러오고, 음표가 바뀔 때만 Part를 새로 만든다", async () => {
     const player = new Player();
     await player.load(SONG);
     await player.init();
@@ -253,7 +253,11 @@ describe("Player", () => {
     expect(fake.state.instruments).toHaveLength(before + 1);
     expect(fake.state.instruments.at(-1)!.name).toBe("flute");
     expect(oldMelody.dispose).toHaveBeenCalled();
-    expect(fake.state.parts.filter((p) => !p.disposed)).toHaveLength(3);
+    // 악기·믹서만 바뀌면 기존 Part를 그대로 둡니다.
+    expect(fake.state.parts).toHaveLength(3);
+
+    await player.load({ ...SONG, tracks, melody: [] });
+    expect(fake.state.parts.filter((p) => !p.disposed)).toHaveLength(2);
   });
 
   it("상태가 바뀌면 구독자에게 알린다", async () => {

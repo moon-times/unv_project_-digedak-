@@ -49,6 +49,8 @@ export class Player {
   #initPromise: Promise<void> | null = null;
   #instruments = new Map<TrackId, { name: string; instrument: Playable }>();
   #parts: Part[] = [];
+  /** 지금 Part를 만든 곡. 믹서·BPM만 바뀌면 Part를 다시 만들지 않습니다. */
+  #partsSong: SongState | null = null;
   #endEventId: number | null = null;
   #song: SongState | null = null;
   #state: PlayerState = INITIAL_PLAYER_STATE;
@@ -125,7 +127,13 @@ export class Player {
     this.setBpm(song.bpm);
     this.applyMix(song.tracks);
     await this.#syncInstruments(song.tracks);
-    if (this.#song === song) this.#rebuildParts(song);
+    if (this.#song !== song) return;
+    const built = this.#partsSong;
+    const sameNotes =
+      built?.melody === song.melody &&
+      built.accompaniment === song.accompaniment &&
+      built.timeSignature === song.timeSignature;
+    if (!sameNotes) this.#rebuildParts(song);
   }
 
   /** 트랙의 악기 이름이 바뀐 것만 새로 불러옵니다. */
@@ -160,6 +168,7 @@ export class Player {
 
     this.#parts.forEach((part) => part.dispose());
     this.#parts = [];
+    this.#partsSong = song;
     const notes = trackNotes(song);
     for (const track of TRACK_IDS) {
       if (notes[track].length === 0) continue;
@@ -262,6 +271,7 @@ export class Player {
     cancelAnimationFrame(this.#frame);
     this.#parts.forEach((part) => part.dispose());
     this.#parts = [];
+    this.#partsSong = null;
     this.#instruments.forEach(({ instrument }) => instrument.dispose());
     this.#instruments.clear();
     const audio = this.#audio;
