@@ -31,6 +31,10 @@ vi.mock("@/lib/supabase/useAuthUser", () => ({
   useAuthUser: () => auth.state,
 }));
 
+// DB 동기화는 useProjectSync.test.ts에서 따로 확인합니다.
+const sync = vi.hoisted(() => ({ phase: "ready" as string }));
+vi.mock("./useProjectSync", () => ({ useProjectSync: () => sync.phase }));
+
 const note = { pitch: 60, start: 0, duration: 4, velocity: 0.8 };
 const chord = { symbol: "C", start: 0, duration: 16 };
 
@@ -38,6 +42,7 @@ beforeEach(() => {
   useSongStore.getState().reset();
   playback.state = { status: "idle", step: 0 };
   auth.state = { user: null, loading: false };
+  sync.phase = "ready";
   vi.clearAllMocks();
 });
 afterEach(cleanup);
@@ -159,5 +164,32 @@ describe("재생 바", () => {
     render(<Studio projectId={null} />);
     expect(stepButton(/^재생$/)).toHaveProperty("disabled", true);
     expect(screen.getByRole("status").textContent).toContain("불러오는 중");
+  });
+});
+
+describe("곡 불러오기 상태", () => {
+  test("불러오는 동안에는 편집 화면 대신 안내만 보인다", () => {
+    sync.phase = "loading";
+    render(<Studio projectId="p1" />);
+    expect(screen.getByRole("status").textContent).toBe("곡을 여는 중...");
+    expect(screen.queryByRole("textbox", { name: "곡 제목" })).toBeNull();
+  });
+
+  test("찾을 수 없거나 형식이 깨진 곡은 내 프로젝트로 돌아가는 링크를 준다", () => {
+    sync.phase = "not-found";
+    const { unmount } = render(<Studio projectId="p1" />);
+    expect(screen.getByRole("alert").textContent).toBe(
+      "프로젝트를 찾을 수 없어요",
+    );
+    expect(
+      screen.getByRole("link", { name: "내 프로젝트로" }).getAttribute("href"),
+    ).toBe("/projects");
+    unmount();
+
+    sync.phase = "invalid";
+    render(<Studio projectId="p1" />);
+    expect(screen.getByRole("alert").textContent).toContain(
+      "곡을 열 수 없어요",
+    );
   });
 });

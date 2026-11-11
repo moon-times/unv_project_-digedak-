@@ -7,7 +7,7 @@ export {
   type ChordAssignment,
   type ChordCandidate,
 } from "./chords";
-export { buildExplanation, koreanKeyName } from "./explain";
+export { buildExplanation, koreanKeyName, STYLE_LABEL } from "./explain";
 export { detectKey, pitchClassHistogram, type KeyDetection } from "./key";
 export { recommendStyle, suggestBpm, STYLE_BPM_RANGE } from "./style";
 export {
