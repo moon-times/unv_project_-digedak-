@@ -59,3 +59,10 @@ export const StopIcon = (props: IconProps) => (
     <rect x="6" y="6" width="12" height="12" rx="1.5" />
   </Icon>
 );
+
+export const PauseIcon = (props: IconProps) => (
+  <Icon fill="currentColor" stroke="none" {...props}>
+    <rect x="6" y="5" width="4" height="14" rx="1" />
+    <rect x="14" y="5" width="4" height="14" rx="1" />
+  </Icon>
+);
