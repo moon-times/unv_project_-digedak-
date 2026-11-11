@@ -162,7 +162,9 @@ export function LoginForm({
           )}
           {mode === "login" && (
             // 비밀번호 재설정은 다음 명세
-            <span className="text-sm opacity-50">비밀번호를 잊었나요?{'('}구현중{')'}</span>
+            <span className="text-sm opacity-50">
+              비밀번호를 잊었나요? (구현중)
+            </span>
           )}
           <button
             type="submit"
