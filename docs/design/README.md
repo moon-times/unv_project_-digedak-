@@ -148,5 +148,9 @@ Google Fonts의 두 글꼴을 씁니다. Next.js에서는 `next/font/google`의 
 
 ## 코드 적용 상태
 
-- 스튜디오 공통 틀(헤더, 진행 바, 다음 단계 버튼, 재생 바)은 목업 구조와 문구에 맞췄습니다. 색과 글꼴은 아직 기본값입니다.
-- 색과 글꼴은 공통 디자인 작업에서 위 표의 이름으로 `src/app/globals.css`의 `@theme`에 토큰을 만들고, 각자 화면에서 그 토큰을 씁니다. 그 전까지 새 화면은 값을 직접 쓰지 말고 기본 스타일로 둡니다.
+- 스튜디오 공통 틀(헤더, 진행 바, 다음 단계 버튼, 재생 바)은 목업 구조와 문구에 맞췄습니다.
+- 색 토큰과 글꼴이 `src/app/globals.css` · `src/app/layout.tsx`에 들어갔습니다. 위 색 표의 이름 그대로 Tailwind 클래스로 씁니다: `bg-paper`, `bg-surface`, `text-ink`, `text-ink-muted`, `border-line`, `border-line-dashed`, `bg-primary`, `text-on-primary`, `bg-earth`, `bg-record`, `text-danger`.
+- 글꼴: 본문은 기본(`font-sans` = IBM Plex Sans KR), 제목 · 숫자는 `font-display`(Jua).
+- 다크 모드는 없습니다. 키보드 포커스는 모든 요소에 2px `primary` 외곽선이 공통으로 붙습니다.
+- 예전 이름 `foreground`(= `ink`) · `background`(= `paper`)도 당분간 동작합니다. 스튜디오 · 타임라인을 토큰으로 옮기면 지웁니다. 새 코드는 `#2B2018` 같은 값이나 `foreground` 대신 토큰을 쓰세요.
+- 타임라인 어두운 영역과 트랙 색은 아직 토큰이 아닙니다(A · B가 타임라인 색을 입힐 때 추가).

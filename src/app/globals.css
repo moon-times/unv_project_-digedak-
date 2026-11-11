@@ -1,26 +1,40 @@
 @import "tailwindcss";
 
+/* 디자인 토큰: docs/design/README.md 색 표. 목업은 밝은 테마 하나뿐이라 다크 모드는 두지 않습니다. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* 스튜디오 · 타임라인이 아직 쓰는 이름. 토큰으로 옮기면 지웁니다. */
+  --background: #f3e6cf;
+  --foreground: #2b2018;
+}
+
+@theme {
+  --color-paper: #f3e6cf;
+  --color-surface: #fbf4e8;
+  --color-ink: #2b2018;
+  --color-ink-muted: #5e4838;
+  --color-line: #cdb08f;
+  --color-line-dashed: #8b6a50;
+  --color-primary: #2c6e62;
+  --color-on-primary: #fbf4e8;
+  --color-earth: #6e4a30;
+  --color-record: #e9603c;
+  --color-danger: #a23b2a;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --font-sans: var(--font-plex), sans-serif;
+  --font-display: var(--font-jua), var(--font-plex), sans-serif;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-sans), sans-serif;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
