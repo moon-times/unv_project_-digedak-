@@ -99,7 +99,7 @@ function SyncMessage({ phase }: { phase: Exclude<SyncPhase, "ready"> }) {
       {phase !== "loading" && (
         <Link
           href="/projects"
-          className="flex min-h-11 items-center rounded-full border-2 border-foreground px-5 font-semibold"
+          className="flex min-h-11 items-center rounded-full border-2 border-ink px-5 font-semibold"
         >
           내 프로젝트로
         </Link>

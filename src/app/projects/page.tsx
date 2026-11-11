@@ -9,7 +9,7 @@ import { ProjectCard } from "./ProjectCard";
 // docs/specs/02_save-list/design.md §5. 사용자 확인과 목록 읽기는 Suspense 안에서 (Cache Components)
 export default function ProjectsPage() {
   return (
-    <main className="min-h-dvh bg-[#F3E6CF] p-8 text-[#2B2018]">
+    <main className="min-h-dvh bg-paper p-8 text-ink">
       <Suspense fallback={<p className="opacity-60">불러오는 중...</p>}>
         <Projects />
       </Suspense>
@@ -18,7 +18,7 @@ export default function ProjectsPage() {
 }
 
 const newProjectClass =
-  "flex min-h-11 items-center rounded-full border-2 border-[#2B2018] bg-[#2C6E62] px-5 font-bold text-[#FBF4E8] shadow-[0_3px_0_#2B2018]";
+  "flex min-h-11 items-center rounded-full border-2 border-ink bg-primary px-5 font-bold text-on-primary shadow-[0_3px_0_var(--color-ink)]";
 
 async function Projects() {
   const supabase = await createClient();
@@ -31,10 +31,10 @@ async function Projects() {
       <header className="flex flex-wrap items-center gap-3">
         <h1 className="text-[28px] font-bold">
           내 프로젝트{" "}
-          <span className="text-[20px] text-[#5E4838]">{projects.length}</span>
+          <span className="text-[20px] text-ink-muted">{projects.length}</span>
         </h1>
         <div className="ml-auto flex flex-wrap items-center gap-3">
-          <span className="text-[#5E4838]">{data.claims.email}</span>
+          <span className="text-ink-muted">{data.claims.email}</span>
           <LogoutButton />
           <Link href="/studio/new" className={newProjectClass}>
             + 새 프로젝트
