@@ -3,7 +3,7 @@
 import type { Style } from "@/types/song";
 import { pitchClassName, usesFlats, type Key } from "./theory";
 
-const STYLE_LABEL: Record<Style, string> = {
+export const STYLE_LABEL: Record<Style, string> = {
   pop: "팝",
   ballad: "발라드",
   rock: "록",
