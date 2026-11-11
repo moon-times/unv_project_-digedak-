@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { Timeline } from "@/features/piano-roll/Timeline";
+import { useAuthUser } from "@/lib/supabase/useAuthUser";
 import {
   player,
   secondsPerStep,
@@ -47,8 +48,9 @@ const NEXT_LABELS: Record<StudioStep, string> = {
 
 export function Studio({ projectId }: { projectId: string | null }) {
   // TODO(C §5): projectId가 있으면 Supabase에서 불러와 loadSong()
-  // TODO(C §4): 게스트 여부는 projectId가 아니라 로그인 상태로 판단
-  const isGuest = projectId === null;
+  const { user, loading } = useAuthUser();
+  // 로그인 상태를 확인하는 동안에는 회원 · 게스트 어느 쪽 화면도 보이지 않게 둡니다.
+  const auth: Auth = loading ? "loading" : user ? "member" : "guest";
   const step = useSongStore((s) => s.step);
   // song 전체를 구독하면 제목 한 글자마다 타임라인까지 다시 그려지므로, 열린 단계 목록만 구독합니다.
   const available = useSongStore(useShallow((s) => getAvailableSteps(s.song)));
@@ -56,7 +58,7 @@ export function Studio({ projectId }: { projectId: string | null }) {
 
   return (
     <div className="flex h-dvh flex-col">
-      <StudioHeader isGuest={isGuest} />
+      <StudioHeader auth={auth} projectId={projectId} />
       <ProgressBar current={step} available={available} onSelect={setStep} />
 
       <div className="flex min-h-0 flex-1">
@@ -100,7 +102,16 @@ function NextStepButton({
   );
 }
 
-function StudioHeader({ isGuest }: { isGuest: boolean }) {
+type Auth = "loading" | "guest" | "member";
+
+function StudioHeader({
+  auth,
+  projectId,
+}: {
+  auth: Auth;
+  projectId: string | null;
+}) {
+  const isGuest = auth === "guest";
   const title = useSongStore((s) => s.song.title);
   const setTitle = useSongStore((s) => s.setTitle);
   const saveStatus = useSongStore((s) => s.saveStatus);
@@ -109,16 +120,20 @@ function StudioHeader({ isGuest }: { isGuest: boolean }) {
 
   return (
     <header className="flex h-[65px] shrink-0 items-center gap-3.5 px-5">
-      {/* TODO(C §3): /projects 화면이 생기면 회원은 내 프로젝트로 */}
-      <Link
-        href="/"
-        aria-label={
-          isGuest ? "처음 화면으로 돌아가기" : "내 프로젝트로 돌아가기"
-        }
-        className="flex size-11 shrink-0 items-center justify-center rounded-full hover:bg-foreground/5"
-      >
-        <ChevronLeftIcon />
-      </Link>
+      {auth === "loading" ? (
+        // 돌아갈 곳이 정해지기 전에는 같은 크기의 빈 칸만 둡니다.
+        <span aria-hidden className="size-11 shrink-0" />
+      ) : (
+        <Link
+          href={isGuest ? "/" : "/projects"}
+          aria-label={
+            isGuest ? "처음 화면으로 돌아가기" : "내 프로젝트로 돌아가기"
+          }
+          className="flex size-11 shrink-0 items-center justify-center rounded-full hover:bg-foreground/5"
+        >
+          <ChevronLeftIcon />
+        </Link>
+      )}
 
       <div className="flex min-w-0 flex-1 flex-col">
         <input
@@ -129,19 +144,18 @@ function StudioHeader({ isGuest }: { isGuest: boolean }) {
         />
         <span className="flex items-center gap-1.5 text-[13px] opacity-70">
           <CloudIcon size={15} />
-          {saveStatusText(isGuest, saveStatus, dirty, lastSavedAt)}
+          {auth !== "loading" &&
+            saveStatusText(isGuest, saveStatus, dirty, lastSavedAt)}
         </span>
       </div>
 
       {isGuest && (
-        // TODO(C §4): 로그인 화면이 생기면 Link로 바꾸고, 로그인 뒤 이 스튜디오로 돌아오게
-        <button
-          type="button"
-          disabled
-          className="min-h-11 rounded-full border-2 border-foreground px-4 text-[15px] font-semibold disabled:opacity-40"
+        <Link
+          href={`/login?next=/studio/${projectId ?? "new"}`}
+          className="flex min-h-11 items-center rounded-full border-2 border-foreground px-4 text-[15px] font-semibold"
         >
           로그인
-        </button>
+        </Link>
       )}
       {/* TODO(C §3): 내보내기 팝업 (회원: WAV · 저장 / 게스트: 로그인 안내) */}
       <button

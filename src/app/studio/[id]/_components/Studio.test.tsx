@@ -11,10 +11,24 @@ const playback = vi.hoisted(() => ({
   stop: vi.fn(),
 }));
 vi.mock("@/features/player", () => ({
-  player: { play: playback.play, pause: playback.pause, stop: playback.stop },
+  INITIAL_PLAYER_STATE: { status: "idle", step: 0 },
+  player: {
+    play: playback.play,
+    pause: playback.pause,
+    stop: playback.stop,
+    subscribe: () => () => {},
+    getState: () => playback.state,
+  },
   secondsPerStep: (bpm: number) => 60 / bpm / 4,
   usePlayerState: () => playback.state,
   useSyncPlayerWithSong: () => {},
+}));
+
+const auth = vi.hoisted(() => ({
+  state: { user: null as { id: string } | null, loading: false },
+}));
+vi.mock("@/lib/supabase/useAuthUser", () => ({
+  useAuthUser: () => auth.state,
 }));
 
 const note = { pitch: 60, start: 0, duration: 4, velocity: 0.8 };
@@ -23,6 +37,7 @@ const chord = { symbol: "C", start: 0, duration: 16 };
 beforeEach(() => {
   useSongStore.getState().reset();
   playback.state = { status: "idle", step: 0 };
+  auth.state = { user: null, loading: false };
   vi.clearAllMocks();
 });
 afterEach(cleanup);
@@ -86,13 +101,31 @@ describe("재생 바와 헤더", () => {
   test("게스트는 로그인 안내를, 회원은 마지막 자동 저장 시각을 본다", () => {
     const { unmount } = render(<Studio projectId={null} />);
     expect(screen.getByText(/게스트로 작업 중이에요/)).toBeTruthy();
-    expect(stepButton(/^로그인$/)).toBeTruthy();
+    // 로그인 뒤 이 스튜디오로 돌아오도록 next를 붙인다
+    expect(
+      screen.getByRole("link", { name: /^로그인$/ }).getAttribute("href"),
+    ).toBe("/login?next=/studio/new");
     unmount();
 
+    auth.state = { user: { id: "u1" }, loading: false };
     useSongStore.getState().markSaved();
     render(<Studio projectId="p1" />);
     expect(screen.getByText(/^\d{2}:\d{2}에 자동 저장됨$/)).toBeTruthy();
-    expect(screen.queryByRole("button", { name: /^로그인$/ })).toBeNull();
+    expect(screen.queryByRole("link", { name: /^로그인$/ })).toBeNull();
+    // 회원은 뒤로 가기가 내 프로젝트로
+    expect(
+      screen
+        .getByRole("link", { name: "내 프로젝트로 돌아가기" })
+        .getAttribute("href"),
+    ).toBe("/projects");
+  });
+
+  test("로그인 상태를 확인하는 동안에는 회원 · 게스트 어느 쪽 화면도 보이지 않는다", () => {
+    auth.state = { user: null, loading: true };
+    render(<Studio projectId={null} />);
+    expect(screen.queryByRole("link", { name: /돌아가기$/ })).toBeNull();
+    expect(screen.queryByRole("link", { name: /^로그인$/ })).toBeNull();
+    expect(screen.queryByText(/게스트로 작업 중이에요|자동 저장/)).toBeNull();
   });
 });
 
