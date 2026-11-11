@@ -11,20 +11,14 @@ export function useAuthUser(): { user: User | null; loading: boolean } {
   });
 
   useEffect(() => {
-    const supabase = createClient();
-    let active = true;
-    // getSession()은 저장된 값을 그대로 믿으므로 서버에 확인하는 getUser()로 처음 값을 읽습니다.
-    void supabase.auth.getUser().then(({ data }) => {
-      if (active) setState({ user: data.user, loading: false });
-    });
-    // 로그인 · 로그아웃(다른 탭 포함) · 토큰 갱신 때마다 갱신
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (active) setState({ user: session?.user ?? null, loading: false });
-    });
-    return () => {
-      active = false;
-      data.subscription.unsubscribe();
-    };
+    // 구독하자마자 현재 세션(INITIAL_SESSION)을 한 번 알려 주고, 그 뒤 로그인 · 로그아웃(다른 탭 포함)마다 갱신됩니다.
+    // 따로 getUser()를 부르면 그 응답이 로그아웃 이벤트보다 늦게 와서 덮어쓸 수 있어 쓰지 않습니다.
+    const { data } = createClient().auth.onAuthStateChange(
+      (_event, session) => {
+        setState({ user: session?.user ?? null, loading: false });
+      },
+    );
+    return () => data.subscription.unsubscribe();
   }, []);
 
   return state;
