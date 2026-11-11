@@ -5,6 +5,12 @@ import type { ReactNode } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { Timeline } from "@/features/piano-roll/Timeline";
 import {
+  player,
+  secondsPerStep,
+  usePlayerState,
+  useSyncPlayerWithSong,
+} from "@/features/player";
+import {
   getAvailableSteps,
   STUDIO_STEPS,
   useSongStore,
@@ -15,6 +21,7 @@ import {
   ChevronLeftIcon,
   CloudIcon,
   DownloadIcon,
+  PauseIcon,
   PlayIcon,
   StopIcon,
 } from "./icons";
@@ -54,8 +61,7 @@ export function Studio({ projectId }: { projectId: string | null }) {
 
       <div className="flex min-h-0 flex-1">
         <main className="min-w-0 flex-1 px-5 pt-4 pb-5">
-          {/* TODO(B): 재생 위치가 정해지면 position으로 넘기기 */}
-          <Timeline />
+          <TimelineWithPlayhead />
         </main>
         <aside className="flex w-[380px] shrink-0 flex-col gap-4 border-l-2 border-foreground/10 px-5 pt-5 pb-5">
           <div className="min-h-0 flex-1">{PANELS[step]}</div>
@@ -171,40 +177,64 @@ export function saveStatusText(
   return "자동 저장 켜짐";
 }
 
-// BPM은 녹음 패널(A)과 반주 패널(B)에서 바꾸고, 재생 바는 보여 주기만 합니다.
+// BPM은 녹음 패널(A)과 반주 패널(B)에서 바꾸고, 재생 바는 재생 조작과 표시만 합니다.
 function TransportBar() {
+  // 곡이 바뀌면 재생기에 반영하고, 스튜디오를 나가면 재생을 멈춥니다.
+  useSyncPlayerWithSong();
   const song = useSongStore((s) => s.song);
+  const { status, step } = usePlayerState();
   const [beats, beatUnit] = song.timeSignature;
   const bars = countBars(song);
+  const playing = status === "playing";
+  const loading = status === "loading";
 
   return (
     <footer className="flex h-[66px] shrink-0 items-center gap-4 border-t-2 border-foreground/80 px-5">
-      {/* TODO(B): player.play() / stop() 연결, 재생 위치 표시 */}
       <div className="flex gap-2">
         <button
           type="button"
-          disabled
-          aria-label="재생"
+          disabled={bars === 0 || loading}
+          aria-label={playing ? "일시정지" : "재생"}
+          // 첫 재생은 이 클릭 안에서 오디오를 켜고 악기를 받습니다. 실패는 status로 보여 줍니다.
+          onClick={() =>
+            playing ? player.pause() : player.play().catch(() => {})
+          }
           className="flex size-[46px] items-center justify-center rounded-full border-2 border-foreground bg-foreground text-background disabled:opacity-40"
         >
-          <PlayIcon />
+          {playing ? <PauseIcon /> : <PlayIcon />}
         </button>
         <button
           type="button"
-          disabled
+          disabled={!playing && step === 0}
           aria-label="정지"
+          onClick={() => player.stop()}
           className="flex size-[46px] items-center justify-center rounded-full border-2 border-foreground disabled:opacity-40"
         >
           <StopIcon size={16} />
         </button>
       </div>
       <span className="text-[19px] font-bold tabular-nums">
-        0:00 / {formatTime(songDurationSeconds(song))}
+        {formatTime(step * secondsPerStep(song.bpm))} /{" "}
+        {formatTime(songDurationSeconds(song))}
       </span>
       <span className="text-[15px] opacity-70">
         {song.bpm} BPM, {beats}/{beatUnit}박자
         {bars > 0 && `, ${bars}마디`}
       </span>
+      {(loading || status === "error") && (
+        <span role="status" className="text-[15px] opacity-70">
+          {loading
+            ? "악기 소리를 불러오는 중..."
+            : "소리를 켜지 못했어요. 다시 눌러 보세요"}
+        </span>
+      )}
     </footer>
   );
+}
+
+// 재생 위치만 프레임마다 바뀌므로, 위치를 구독하는 부분을 따로 둡니다.
+function TimelineWithPlayhead() {
+  const { status, step } = usePlayerState();
+  const showPlayhead = status === "playing" || status === "paused";
+  return <Timeline position={showPlayhead ? step : undefined} />;
 }

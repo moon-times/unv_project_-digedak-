@@ -1,12 +1,30 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { useSongStore } from "@/store/songStore";
 import { Studio } from "./Studio";
+
+// 재생 엔진은 가짜로 바꿔 버튼 연결만 확인합니다 (실제 소리는 브라우저에서).
+const playback = vi.hoisted(() => ({
+  state: { status: "idle", step: 0 } as { status: string; step: number },
+  play: vi.fn(async () => {}),
+  pause: vi.fn(),
+  stop: vi.fn(),
+}));
+vi.mock("@/features/player", () => ({
+  player: { play: playback.play, pause: playback.pause, stop: playback.stop },
+  secondsPerStep: (bpm: number) => 60 / bpm / 4,
+  usePlayerState: () => playback.state,
+  useSyncPlayerWithSong: () => {},
+}));
 
 const note = { pitch: 60, start: 0, duration: 4, velocity: 0.8 };
 const chord = { symbol: "C", start: 0, duration: 16 };
 
-beforeEach(() => useSongStore.getState().reset());
+beforeEach(() => {
+  useSongStore.getState().reset();
+  playback.state = { status: "idle", step: 0 };
+  vi.clearAllMocks();
+});
 afterEach(cleanup);
 
 const stepButton = (name: RegExp) => screen.getByRole("button", { name });
@@ -75,5 +93,38 @@ describe("재생 바와 헤더", () => {
     render(<Studio projectId="p1" />);
     expect(screen.getByText(/^\d{2}:\d{2}에 자동 저장됨$/)).toBeTruthy();
     expect(screen.queryByRole("button", { name: /^로그인$/ })).toBeNull();
+  });
+});
+
+describe("재생 바", () => {
+  test("곡이 비어 있으면 재생할 수 없다", () => {
+    render(<Studio projectId={null} />);
+    expect(stepButton(/^재생$/)).toHaveProperty("disabled", true);
+    expect(stepButton(/^정지$/)).toHaveProperty("disabled", true);
+  });
+
+  test("재생 버튼은 재생기를 켜고, 재생 중에는 일시정지가 된다", () => {
+    useSongStore.getState().setMelody([note]);
+    const { rerender } = render(<Studio projectId={null} />);
+    fireEvent.click(stepButton(/^재생$/));
+    expect(playback.play).toHaveBeenCalled();
+
+    // 120 BPM에서 8 step = 1초
+    useSongStore.getState().setBpm(120);
+    playback.state = { status: "playing", step: 8 };
+    rerender(<Studio projectId={null} />);
+    expect(screen.getByText(/^0:01 \//)).toBeTruthy();
+    fireEvent.click(stepButton(/^일시정지$/));
+    expect(playback.pause).toHaveBeenCalled();
+    fireEvent.click(stepButton(/^정지$/));
+    expect(playback.stop).toHaveBeenCalled();
+  });
+
+  test("악기를 받는 동안에는 재생 버튼을 막고 안내한다", () => {
+    useSongStore.getState().setMelody([note]);
+    playback.state = { status: "loading", step: 0 };
+    render(<Studio projectId={null} />);
+    expect(stepButton(/^재생$/)).toHaveProperty("disabled", true);
+    expect(screen.getByRole("status").textContent).toContain("불러오는 중");
   });
 });
