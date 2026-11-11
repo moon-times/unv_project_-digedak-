@@ -1,7 +1,12 @@
 import { beforeEach, describe, expect, test } from "vitest";
 import { SongStateSchema } from "@/lib/schemas";
 import { createEmptySong } from "@/types/song";
-import { getAvailableSteps, useSongStore } from "./songStore";
+import {
+  getAvailableSteps,
+  GUEST_DRAFT_KEY,
+  guestDraft,
+  useSongStore,
+} from "./songStore";
 
 const note = { pitch: 60, start: 0, duration: 4, velocity: 0.8 };
 const chord = { symbol: "C", start: 0, duration: 16 };
@@ -69,11 +74,50 @@ describe("useSongStore", () => {
   test("loadSong은 화면 상태를 초기화하고 dirty를 끈다", () => {
     useSongStore.getState().setStep("mix");
     const loaded = { ...createEmptySong(), title: "불러온 곡" };
-    useSongStore.getState().loadSong(loaded);
+    useSongStore.getState().loadSong(loaded, "p1");
     expect(useSongStore.getState()).toMatchObject({
       song: loaded,
+      projectId: "p1",
       step: "record",
       dirty: false,
+    });
+  });
+});
+
+describe("게스트 보관 (localStorage)", () => {
+  test("프로젝트에 연결되기 전의 곡만 보관하고, 연결되면 비운다", () => {
+    useSongStore.getState().setTitle("게스트 곡");
+    expect(guestDraft(useSongStore.getState())).toMatchObject({
+      song: { title: "게스트 곡" },
+      dirty: true,
+    });
+    const saved = JSON.parse(localStorage.getItem(GUEST_DRAFT_KEY)!);
+    expect(saved.state.song.title).toBe("게스트 곡");
+
+    useSongStore.getState().setProjectId("p1");
+    expect(guestDraft(useSongStore.getState())).toEqual({});
+    expect(JSON.parse(localStorage.getItem(GUEST_DRAFT_KEY)!).state).toEqual(
+      {},
+    );
+  });
+
+  test("새로고침 뒤 rehydrate하면 게스트 작업이 돌아온다", async () => {
+    // 새로고침 전 브라우저에 남아 있던 보관본
+    localStorage.setItem(
+      GUEST_DRAFT_KEY,
+      JSON.stringify({
+        state: {
+          song: { ...createEmptySong(), title: "남겨 둔 곡" },
+          dirty: true,
+        },
+        version: 1,
+      }),
+    );
+    await useSongStore.persist.rehydrate();
+    expect(useSongStore.getState()).toMatchObject({
+      song: { title: "남겨 둔 곡" },
+      dirty: true,
+      projectId: null,
     });
   });
 });

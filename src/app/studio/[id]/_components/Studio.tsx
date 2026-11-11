@@ -5,6 +5,7 @@ import { useSyncExternalStore, type ReactNode } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { Timeline } from "@/features/piano-roll/Timeline";
 import { useAuthUser } from "@/lib/supabase/useAuthUser";
+import { useProjectSync, type SyncPhase } from "./useProjectSync";
 import {
   INITIAL_PLAYER_STATE,
   player,
@@ -48,19 +49,23 @@ const NEXT_LABELS: Record<StudioStep, string> = {
   mix: "내보내기",
 };
 
+/** @param projectId 주소의 id. `/studio/new`면 null */
 export function Studio({ projectId }: { projectId: string | null }) {
-  // TODO(C §5): projectId가 있으면 Supabase에서 불러와 loadSong()
   const { user, loading } = useAuthUser();
   // 로그인 상태를 확인하는 동안에는 회원 · 게스트 어느 쪽 화면도 보이지 않게 둡니다.
   const auth: Auth = loading ? "loading" : user ? "member" : "guest";
+  const phase = useProjectSync(projectId, auth === "member");
   const step = useSongStore((s) => s.step);
   // song 전체를 구독하면 제목 한 글자마다 타임라인까지 다시 그려지므로, 열린 단계 목록만 구독합니다.
   const available = useSongStore(useShallow((s) => getAvailableSteps(s.song)));
   const setStep = useSongStore((s) => s.setStep);
 
+  // 불러오기가 끝나기 전에는 편집할 수 없게 스튜디오 대신 안내만 보여 줍니다.
+  if (phase !== "ready") return <SyncMessage phase={phase} />;
+
   return (
     <div className="flex h-dvh flex-col">
-      <StudioHeader auth={auth} projectId={projectId} />
+      <StudioHeader auth={auth} />
       <ProgressBar current={step} available={available} onSelect={setStep} />
 
       <div className="flex min-h-0 flex-1">
@@ -74,6 +79,31 @@ export function Studio({ projectId }: { projectId: string | null }) {
       </div>
 
       <TransportBar />
+    </div>
+  );
+}
+
+const SYNC_MESSAGES: Record<Exclude<SyncPhase, "ready">, string> = {
+  loading: "곡을 여는 중...",
+  "not-found": "프로젝트를 찾을 수 없어요",
+  invalid: "곡을 열 수 없어요. 저장된 데이터 형식이 맞지 않아요",
+  error: "곡을 불러오지 못했어요. 잠시 뒤 새로고침해 주세요",
+};
+
+function SyncMessage({ phase }: { phase: Exclude<SyncPhase, "ready"> }) {
+  return (
+    <div className="flex h-dvh flex-col items-center justify-center gap-4 p-6 text-center">
+      <p role={phase === "loading" ? "status" : "alert"} className="text-lg">
+        {SYNC_MESSAGES[phase]}
+      </p>
+      {phase !== "loading" && (
+        <Link
+          href="/projects"
+          className="flex min-h-11 items-center rounded-full border-2 border-foreground px-5 font-semibold"
+        >
+          내 프로젝트로
+        </Link>
+      )}
     </div>
   );
 }
@@ -106,14 +136,10 @@ function NextStepButton({
 
 type Auth = "loading" | "guest" | "member";
 
-function StudioHeader({
-  auth,
-  projectId,
-}: {
-  auth: Auth;
-  projectId: string | null;
-}) {
+function StudioHeader({ auth }: { auth: Auth }) {
   const isGuest = auth === "guest";
+  // 새 곡이 처음 저장되면 주소가 /studio/{id}로 바뀌므로 store의 id를 씁니다.
+  const projectId = useSongStore((s) => s.projectId);
   const title = useSongStore((s) => s.song.title);
   const setTitle = useSongStore((s) => s.setTitle);
   const saveStatus = useSongStore((s) => s.saveStatus);

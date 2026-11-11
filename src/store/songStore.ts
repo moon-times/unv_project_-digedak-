@@ -1,6 +1,8 @@
 // 곡 상태 전역 store. 모든 화면이 같은 SongState를 읽고 고칩니다.
-// song은 DB(projects.song)에 그대로 저장되고, 그 밖의 값(step, saveStatus, dirty, lastSavedAt)은 화면 전용입니다.
+// song은 DB(projects.song)에 그대로 저장되고, 그 밖의 값(projectId, step, saveStatus, dirty, lastSavedAt)은 화면 전용입니다.
+// 아직 프로젝트에 연결되지 않은 곡(게스트 작업)만 브라우저(localStorage)에 보관합니다. docs/specs/02_save-list/design.md §3
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 import {
   createEmptySong,
   type Accompaniment,
@@ -34,6 +36,8 @@ export function getAvailableSteps(song: SongState): StudioStep[] {
 
 type SongStore = {
   song: SongState;
+  /** 지금 곡이 연결된 프로젝트. null이면 아직 저장 전(게스트이거나 새 곡의 첫 변경 전) */
+  projectId: string | null;
   step: StudioStep;
   saveStatus: SaveStatus;
   /** 마지막 저장 이후 song이 바뀌었는지 (자동 저장 판단용) */
@@ -52,8 +56,10 @@ type SongStore = {
   updateTrack: (id: TrackId, patch: Partial<Omit<Track, "id">>) => void;
   setRecording: (recording: SongState["recording"]) => void;
 
-  /** 저장된 프로젝트를 불러올 때. dirty를 false로 둡니다. */
-  loadSong: (song: SongState) => void;
+  /** 저장된 프로젝트를 불러올 때. 화면 상태를 초기화하고 dirty를 false로 둡니다. */
+  loadSong: (song: SongState, projectId: string | null) => void;
+  /** 새 곡을 프로젝트로 처음 저장했을 때 */
+  setProjectId: (projectId: string) => void;
   /** 새 곡으로 초기화 */
   reset: () => void;
 
@@ -65,46 +71,75 @@ type SongStore = {
 
 const initialState = () => ({
   song: createEmptySong(),
+  projectId: null as string | null,
   step: "record" as StudioStep,
   saveStatus: "idle" as SaveStatus,
   dirty: false,
   lastSavedAt: null as number | null,
 });
 
-export const useSongStore = create<SongStore>()((set) => {
-  // song을 바꾸는 액션은 모두 이 함수를 거쳐 dirty를 표시합니다.
-  const updateSong = (patch: Partial<SongState>) =>
-    set((state) => ({ song: { ...state.song, ...patch }, dirty: true }));
+/** localStorage 키. 게스트 작업만 담깁니다. */
+export const GUEST_DRAFT_KEY = "digedak-guest-draft";
 
-  return {
-    ...initialState(),
+/**
+ * 브라우저에 보관할 내용. 프로젝트에 연결된 곡은 DB에 있으므로 보관하지 않고({}),
+ * 연결되는 순간 보관본도 비워집니다.
+ */
+export function guestDraft(
+  state: SongStore,
+): Partial<Pick<SongStore, "song" | "dirty">> {
+  return state.projectId === null
+    ? { song: state.song, dirty: state.dirty }
+    : {};
+}
 
-    setTitle: (title) => updateSong({ title }),
-    setBpm: (bpm) => updateSong({ bpm }),
-    setKey: (key) => updateSong({ key }),
-    setStyle: (style) => updateSong({ style }),
-    setMelody: (melody) => updateSong({ melody }),
-    setChords: (chords) => updateSong({ chords }),
-    setExplanation: (explanation) => updateSong({ explanation }),
-    setAccompaniment: (accompaniment) => updateSong({ accompaniment }),
-    updateTrack: (id, patch) =>
-      set((state) => ({
-        song: {
-          ...state.song,
-          tracks: state.song.tracks.map((track) =>
-            track.id === id ? { ...track, ...patch } : track,
-          ),
-        },
-        dirty: true,
-      })),
-    setRecording: (recording) => updateSong({ recording }),
+export const useSongStore = create<SongStore>()(
+  persist(
+    (set) => {
+      // song을 바꾸는 액션은 모두 이 함수를 거쳐 dirty를 표시합니다.
+      const updateSong = (patch: Partial<SongState>) =>
+        set((state) => ({ song: { ...state.song, ...patch }, dirty: true }));
 
-    loadSong: (song) => set({ ...initialState(), song }),
-    reset: () => set(initialState()),
+      return {
+        ...initialState(),
 
-    setStep: (step) => set({ step }),
-    setSaveStatus: (saveStatus) => set({ saveStatus }),
-    markSaved: () =>
-      set({ saveStatus: "saved", dirty: false, lastSavedAt: Date.now() }),
-  };
-});
+        setTitle: (title) => updateSong({ title }),
+        setBpm: (bpm) => updateSong({ bpm }),
+        setKey: (key) => updateSong({ key }),
+        setStyle: (style) => updateSong({ style }),
+        setMelody: (melody) => updateSong({ melody }),
+        setChords: (chords) => updateSong({ chords }),
+        setExplanation: (explanation) => updateSong({ explanation }),
+        setAccompaniment: (accompaniment) => updateSong({ accompaniment }),
+        updateTrack: (id, patch) =>
+          set((state) => ({
+            song: {
+              ...state.song,
+              tracks: state.song.tracks.map((track) =>
+                track.id === id ? { ...track, ...patch } : track,
+              ),
+            },
+            dirty: true,
+          })),
+        setRecording: (recording) => updateSong({ recording }),
+
+        loadSong: (song, projectId) =>
+          set({ ...initialState(), song, projectId }),
+        setProjectId: (projectId) => set({ projectId }),
+        reset: () => set(initialState()),
+
+        setStep: (step) => set({ step }),
+        setSaveStatus: (saveStatus) => set({ saveStatus }),
+        markSaved: () =>
+          set({ saveStatus: "saved", dirty: false, lastSavedAt: Date.now() }),
+      };
+    },
+    {
+      name: GUEST_DRAFT_KEY,
+      version: 1,
+      partialize: guestDraft,
+      // 서버 렌더링과 첫 화면이 달라지지 않도록, 스튜디오가 뜬 뒤 rehydrate()로 직접 불러옵니다.
+      skipHydration: true,
+    },
+  ),
+);
