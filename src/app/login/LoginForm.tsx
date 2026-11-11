@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useSyncExternalStore, type SubmitEvent } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { Soon } from "../_components/Soon";
 
 export type Notice = "confirmed" | "link-error";
 type Mode = "login" | "signup";
@@ -223,15 +224,6 @@ export function LoginForm({
 
 const inputClass =
   "min-h-11 rounded-xl border-2 border-ink bg-surface px-3 text-base placeholder:text-ink-muted";
-
-/** 아직 없는 기능 표시. 목업의 "확장" 태그 모양 */
-function Soon() {
-  return (
-    <span className="rounded-[5px] border border-dashed border-line-dashed px-1.5 text-[11px] font-semibold text-ink-muted">
-      준비 중
-    </span>
-  );
-}
 
 const SOCIAL = [
   {

@@ -30,12 +30,12 @@ export function LogoutButton() {
         type="button"
         disabled={pending}
         onClick={logout}
-        className="min-h-11 rounded-full border-2 border-[#2B2018] px-4 font-semibold disabled:opacity-50"
+        className="min-h-11 rounded-full border-2 border-ink bg-surface px-4 font-semibold shadow-[0_3px_0_var(--color-ink)] disabled:opacity-50"
       >
         로그아웃
       </button>
       {failed && (
-        <p role="alert" className="text-sm text-[#A23B2A]">
+        <p role="alert" className="text-sm text-danger">
           로그아웃하지 못했어요. 다시 시도해 주세요
         </p>
       )}
