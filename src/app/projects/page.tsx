@@ -24,7 +24,7 @@ async function Projects() {
   const supabase = await createClient();
   const { data } = await supabase.auth.getClaims();
   if (!data?.claims) redirect("/login?next=/projects");
-  const projects = await listProjects(supabase);
+  const projects = await listProjects(supabase, data.claims.sub);
 
   return (
     <>

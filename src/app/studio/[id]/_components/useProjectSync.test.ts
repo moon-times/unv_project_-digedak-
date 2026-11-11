@@ -18,6 +18,7 @@ const wait = (ms: number) => act(() => vi.advanceTimersByTimeAsync(ms));
 
 beforeEach(() => {
   vi.useFakeTimers();
+  window.history.replaceState(null, "", "/studio/new");
   localStorage.clear();
   store().reset();
   db.createProject.mockReset().mockResolvedValue("new-id");
@@ -55,6 +56,19 @@ describe("useProjectSync", () => {
       "new-id",
       expect.objectContaining({ title: "가나다" }),
     );
+  });
+
+  it("새 곡을 저장하기 전에 떠나면 저장은 보내되 주소는 바꾸지 않는다", async () => {
+    const { unmount } = renderHook(() => useProjectSync(null, true));
+    await wait(0);
+    act(() => store().setTitle("급히 나감"));
+    // 2초가 지나기 전에 내 프로젝트로 이동
+    window.history.pushState(null, "", "/projects");
+    unmount();
+    await wait(0);
+    expect(db.createProject).toHaveBeenCalledTimes(1);
+    expect(store().projectId).toBe("new-id");
+    expect(window.location.pathname).toBe("/projects");
   });
 
   it("2초 안에 이어진 변경은 한 번만 저장한다", async () => {

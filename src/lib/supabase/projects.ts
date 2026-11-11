@@ -77,15 +77,20 @@ export type ProjectSummary = {
   recordingPath: string | null;
 };
 
-/** 내 프로젝트를 최근 수정 순으로. 곡 전체 JSON 대신 카드에 필요한 값만 읽습니다. */
+/**
+ * 내 프로젝트를 최근 수정 순으로. 곡 전체 JSON 대신 카드에 필요한 값만 읽습니다.
+ * RLS는 남의 공개(is_public) 곡도 읽게 하므로 user_id로 직접 거릅니다.
+ */
 export async function listProjects(
   supabase: Client,
+  userId: string,
 ): Promise<ProjectSummary[]> {
   const { data, error } = await supabase
     .from("projects")
     .select(
       "id, title, updated_at, key:song->>key, style:song->>style, bpm:song->bpm, recording:song->recording->>path",
     )
+    .eq("user_id", userId)
     .order("updated_at", { ascending: false });
   if (error) throw error;
   return data.map((row) => ({

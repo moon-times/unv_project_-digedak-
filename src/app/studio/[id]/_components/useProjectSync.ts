@@ -95,8 +95,11 @@ export function useProjectSync(
           const id = await createProject(supabase, song);
           // 연결되는 순간 게스트 보관본도 비워집니다 (persist partialize)
           useSongStore.getState().setProjectId(id);
-          // 서버 왕복 없이 주소만 바꿉니다 (Next의 native history 지원)
-          window.history.replaceState(null, "", `/studio/${id}`);
+          // 서버 왕복 없이 주소만 바꿉니다 (Next의 native history 지원).
+          // 떠나면서 보낸 저장이면 이미 다른 화면이므로 주소를 건드리지 않습니다.
+          if (window.location.pathname === "/studio/new") {
+            window.history.replaceState(null, "", `/studio/${id}`);
+          }
         } else {
           await saveProject(supabase, store.projectId, song);
         }

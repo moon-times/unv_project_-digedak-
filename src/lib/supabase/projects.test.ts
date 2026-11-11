@@ -86,7 +86,7 @@ describe("loadProject", () => {
 
 describe("listProjects", () => {
   it("카드에 필요한 값만 꺼내고, 형식이 다른 값은 null", async () => {
-    const { client } = fakeClient({
+    const { client, query } = fakeClient({
       data: [
         {
           id: "p1",
@@ -109,7 +109,9 @@ describe("listProjects", () => {
       ],
       error: null,
     });
-    const [first, second] = await listProjects(client);
+    const [first, second] = await listProjects(client, "user-1");
+    // 남의 공개 곡이 섞이지 않도록 내 것만
+    expect(query.eq).toHaveBeenCalledWith("user_id", "user-1");
     expect(first).toMatchObject({ key: "C major", style: "pop", bpm: 100 });
     expect(second).toMatchObject({
       key: null,
