@@ -1,15 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { useSyncExternalStore, type ReactNode } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { Timeline } from "@/features/piano-roll/Timeline";
 import { useAuthUser } from "@/lib/supabase/useAuthUser";
 import {
+  INITIAL_PLAYER_STATE,
   player,
   secondsPerStep,
   usePlayerState,
   useSyncPlayerWithSong,
+  type PlayerState,
 } from "@/features/player";
 import {
   getAvailableSteps,
@@ -196,7 +198,12 @@ function TransportBar() {
   // 곡이 바뀌면 재생기에 반영하고, 스튜디오를 나가면 재생을 멈춥니다.
   useSyncPlayerWithSong();
   const song = useSongStore((s) => s.song);
-  const { status, step } = usePlayerState();
+  // 재생 위치는 프레임마다 바뀌지만 재생 바에는 상태와 초 단위 시간만 필요해서, 그 값이 바뀔 때만 다시 그립니다.
+  const status = usePlayerValue((s) => s.status);
+  const atStart = usePlayerValue((s) => s.step === 0);
+  const seconds = usePlayerValue((s) =>
+    Math.floor(s.step * secondsPerStep(song.bpm)),
+  );
   const [beats, beatUnit] = song.timeSignature;
   const bars = countBars(song);
   const playing = status === "playing";
@@ -219,7 +226,7 @@ function TransportBar() {
         </button>
         <button
           type="button"
-          disabled={!playing && step === 0}
+          disabled={!playing && atStart}
           aria-label="정지"
           onClick={() => player.stop()}
           className="flex size-[46px] items-center justify-center rounded-full border-2 border-foreground disabled:opacity-40"
@@ -228,8 +235,7 @@ function TransportBar() {
         </button>
       </div>
       <span className="text-[19px] font-bold tabular-nums">
-        {formatTime(step * secondsPerStep(song.bpm))} /{" "}
-        {formatTime(songDurationSeconds(song))}
+        {formatTime(seconds)} / {formatTime(songDurationSeconds(song))}
       </span>
       <span className="text-[15px] opacity-70">
         {song.bpm} BPM, {beats}/{beatUnit}박자
@@ -243,6 +249,17 @@ function TransportBar() {
         </span>
       )}
     </footer>
+  );
+}
+
+/** 재생기 상태 중 필요한 값 하나만 구독합니다. pick은 원시값(문자열 · 숫자 · 불리언)을 돌려줘야 합니다. */
+function usePlayerValue<T extends string | number | boolean>(
+  pick: (state: PlayerState) => T,
+): T {
+  return useSyncExternalStore(
+    player.subscribe,
+    () => pick(player.getState()),
+    () => pick(INITIAL_PLAYER_STATE),
   );
 }
 
