@@ -209,7 +209,7 @@ type SongState = {
 - `recordings/{user_id}/{project_id}.webm` — 원본 녹음
 - `exports/{user_id}/{project_id}.wav` — 내보낸 결과물 (선택 기능)
 
-**RLS 정책**: 본인 `user_id`의 행만 읽기/쓰기, `is_public = true`인 행은 누구나 읽기 가능.
+**RLS 정책**: 본인 `user_id`의 행만 읽기/쓰기. 공유 페이지는 테이블을 직접 읽지 않고, `get_shared_project(id)` RPC(security definer)가 `is_public = true`인 행 하나의 `title`과 `song`만 돌려줍니다. 공개 곡 전체를 목록으로 조회할 수 없게 하려는 것입니다(2026-11-10 결정, 공유 기능을 만들 때 마이그레이션 반영).
 
 ---
 
