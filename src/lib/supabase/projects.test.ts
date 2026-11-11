@@ -55,6 +55,17 @@ describe("loadProject", () => {
     expect(await loadProject(client, "p1")).toEqual({ status: "not-found" });
   });
 
+  it("UUID 형식이 아닌 id도 not-found, 그 밖의 오류는 그대로 던진다", async () => {
+    const badId = fakeClient({ data: null, error: { code: "22P02" } });
+    expect(await loadProject(badId.client, "abc")).toEqual({
+      status: "not-found",
+    });
+    const network = fakeClient({ data: null, error: { code: "PGRST000" } });
+    await expect(loadProject(network.client, "p1")).rejects.toMatchObject({
+      code: "PGRST000",
+    });
+  });
+
   it("형식이 맞으면 ok, 깨졌으면 invalid", async () => {
     const song = createEmptySong();
     expect(

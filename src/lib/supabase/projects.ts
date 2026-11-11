@@ -7,6 +7,9 @@ import type { SongState } from "@/types/song";
 
 type Client = SupabaseClient<Database>;
 
+/** Postgres invalid_text_representation (잘못된 uuid 문자열 등) */
+const INVALID_UUID = "22P02";
+
 // SongState는 JSON으로 그대로 저장되는 순수 데이터라 jsonb 타입으로 바꿔 넣습니다.
 const toJson = (song: SongState) => song as unknown as Json;
 
@@ -54,6 +57,8 @@ export async function loadProject(
     .select("song")
     .eq("id", id)
     .maybeSingle();
+  // 주소의 id가 UUID 형식이 아니면(/studio/abc) Postgres가 22P02 오류를 냅니다. 없는 프로젝트와 같게 봅니다.
+  if (error?.code === INVALID_UUID) return { status: "not-found" };
   if (error) throw error;
   if (!data) return { status: "not-found" };
   const parsed = SongStateSchema.safeParse(data.song);
