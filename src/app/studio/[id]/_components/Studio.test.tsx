@@ -96,4 +96,12 @@ describe("재생 바와 헤더", () => {
         .getAttribute("href"),
     ).toBe("/projects");
   });
+
+  test("로그인 상태를 확인하는 동안에는 회원 · 게스트 어느 쪽 화면도 보이지 않는다", () => {
+    auth.state = { user: null, loading: true };
+    render(<Studio projectId={null} />);
+    expect(screen.queryByRole("link", { name: /돌아가기$/ })).toBeNull();
+    expect(screen.queryByRole("link", { name: /^로그인$/ })).toBeNull();
+    expect(screen.queryByText(/게스트로 작업 중이에요|자동 저장/)).toBeNull();
+  });
 });
