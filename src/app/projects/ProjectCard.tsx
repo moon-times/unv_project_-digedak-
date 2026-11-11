@@ -34,7 +34,7 @@ export function ProjectCard({ project }: { project: ProjectSummary }) {
   ].filter((tag): tag is string => Boolean(tag));
 
   return (
-    <article className="relative flex flex-col gap-3 rounded-2xl border-2 border-[#2B2018] bg-[#FBF4E8] p-4 shadow-[0_4px_0_#2B2018]">
+    <article className="relative flex flex-col gap-3 rounded-2xl border-2 border-ink bg-surface p-4 shadow-[0_4px_0_var(--color-ink)]">
       <Link
         href={`/studio/${project.id}`}
         className="text-[18px] leading-snug font-bold after:absolute after:inset-0 after:rounded-2xl"
@@ -46,27 +46,27 @@ export function ProjectCard({ project }: { project: ProjectSummary }) {
           {tags.map((tag) => (
             <li
               key={tag}
-              className="rounded-full border border-[#CDB08F] px-2 py-0.5"
+              className="rounded-full border border-line px-2 py-0.5"
             >
               {tag}
             </li>
           ))}
         </ul>
       )}
-      <div className="flex items-center justify-between text-[13px] text-[#5E4838]">
+      <div className="flex items-center justify-between text-[13px] text-ink-muted">
         <span>{updated}</span>
         {/* 카드 전체가 링크라 메뉴는 그 위로 올려 따로 눌리게 합니다. */}
         <details className="relative z-10">
           <summary
             aria-label={`${project.title || "제목 없는 곡"} 메뉴`}
-            className="flex size-9 cursor-pointer list-none items-center justify-center rounded-full text-lg hover:bg-[#2B2018]/10"
+            className="flex size-9 cursor-pointer list-none items-center justify-center rounded-full text-lg hover:bg-ink/10"
           >
             ···
           </summary>
-          <div className="absolute right-0 bottom-10 flex w-40 flex-col rounded-xl border-2 border-[#2B2018] bg-[#FBF4E8] p-1 text-[14px] text-[#2B2018]">
+          <div className="absolute right-0 bottom-10 flex w-40 flex-col rounded-xl border-2 border-ink bg-surface p-1 text-[14px] text-ink">
             <Link
               href={`/studio/${project.id}`}
-              className="rounded-lg px-3 py-2 hover:bg-[#2B2018]/10"
+              className="rounded-lg px-3 py-2 hover:bg-ink/10"
             >
               열기
             </Link>
