@@ -1,23 +1,11 @@
 import Image from "next/image";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { safeNext } from "@/lib/auth/redirect";
 import { createClient } from "@/lib/supabase/server";
+import { Logo } from "../_components/Logo";
 import mascot from "../icon.png";
 import { LoginForm, type Notice } from "./LoginForm";
-
-function Logo({ className = "" }: { className?: string }) {
-  return (
-    <Link
-      href="/"
-      className={`flex w-fit items-center gap-2 font-display text-[22px] ${className}`}
-    >
-      <Image src={mascot} alt="" width={40} height={40} />
-      딕으닥
-    </Link>
-  );
-}
 
 // docs/specs/01_email-login.md §4. 사용자를 읽는 부분은 Cache Components 규칙상 Suspense 안에 둡니다.
 export default function LoginPage({ searchParams }: PageProps<"/login">) {

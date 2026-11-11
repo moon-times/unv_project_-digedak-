@@ -5,6 +5,7 @@ import { useSyncExternalStore } from "react";
 import { koreanKeyName, parseKey, STYLE_LABEL } from "@/lib/music";
 import type { ProjectSummary } from "@/lib/supabase/projects";
 import type { Style } from "@/types/song";
+import { Soon } from "../_components/Soon";
 import { DeleteProjectButton } from "./DeleteProjectButton";
 
 /** "오늘 10:42 수정" 또는 "11월 9일 수정". 사용자의 시간대 기준 */
@@ -46,7 +47,7 @@ export function ProjectCard({ project }: { project: ProjectSummary }) {
           {tags.map((tag) => (
             <li
               key={tag}
-              className="rounded-full border border-line px-2 py-0.5"
+              className="rounded-full border border-line bg-paper px-2 py-0.5"
             >
               {tag}
             </li>
@@ -59,7 +60,7 @@ export function ProjectCard({ project }: { project: ProjectSummary }) {
         <details className="relative z-10">
           <summary
             aria-label={`${project.title || "제목 없는 곡"} 메뉴`}
-            className="flex size-9 cursor-pointer list-none items-center justify-center rounded-full text-lg hover:bg-ink/10"
+            className="flex size-11 cursor-pointer list-none items-center justify-center rounded-full text-lg hover:bg-ink/10"
           >
             ···
           </summary>
@@ -73,9 +74,10 @@ export function ProjectCard({ project }: { project: ProjectSummary }) {
             <button
               type="button"
               disabled
-              className="rounded-lg px-3 py-2 text-left opacity-40"
+              className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-left text-ink-muted"
             >
-              공유 링크 만들기 (준비 중)
+              공유 링크 만들기
+              <Soon />
             </button>
             <DeleteProjectButton
               id={project.id}
