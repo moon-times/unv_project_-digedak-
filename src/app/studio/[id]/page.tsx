@@ -6,7 +6,7 @@ export default function StudioPage({ params }: PageProps<"/studio/[id]">) {
   return (
     <Suspense
       fallback={
-        <div className="p-6 text-sm opacity-60">스튜디오를 여는 중...</div>
+        <div className="p-6 text-sm text-ink-muted">스튜디오를 여는 중...</div>
       }
     >
       {params.then(({ id }) => (
