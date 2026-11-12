@@ -29,7 +29,7 @@ export default function LoginPage({ searchParams }: PageProps<"/login">) {
           alt=""
           width={260}
           height={260}
-          priority
+          loading="eager"
           className="justify-self-end"
         />
       </section>
