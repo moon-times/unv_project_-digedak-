@@ -43,7 +43,7 @@ const PANELS: Record<StudioStep, ReactNode> = {
   mix: <Slot label="믹서 패널" owner="B" />,
 };
 
-// 패널 맨 위 한 줄 설명. 제목은 STEP_LABELS를 씁니다 (docs/design/redesign/02_studio.md 결정 1).
+// 패널 맨 위 한 줄 설명. 제목은 STEP_LABELS. 제목 · 설명은 틀이 그리고 A · B 패널은 도구만 만듭니다.
 const PANEL_INTROS: Record<StudioStep, string> = {
   record: "버튼을 누르고 최대 30초 동안 흥얼거려 주세요.",
   refine: "어긋난 음은 피아노롤에서 고치고, AI가 찾은 키와 코드를 확인하세요.",
