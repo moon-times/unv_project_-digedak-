@@ -47,7 +47,7 @@ export default function Home() {
           alt=""
           width={340}
           height={340}
-          priority
+          loading="eager"
           className="mx-auto w-[220px] md:w-[340px]"
         />
       </section>
