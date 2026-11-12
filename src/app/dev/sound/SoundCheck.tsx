@@ -82,13 +82,19 @@ function useSampleSession() {
       saved = localStorage.getItem(GUEST_DRAFT_KEY);
     } catch {}
     loadSample(SAMPLES[0].id);
-    return () => {
-      // reset()도 보관본을 덮어쓰므로, 비운 다음에 원래 보관본을 되돌립니다.
-      useSongStore.getState().reset();
+    const restoreDraft = () => {
       try {
         if (saved === null) localStorage.removeItem(GUEST_DRAFT_KEY);
         else localStorage.setItem(GUEST_DRAFT_KEY, saved);
       } catch {}
+    };
+    // 탭 닫기 · 새로고침 때는 cleanup이 돌지 않으므로 pagehide에서도 되돌립니다.
+    window.addEventListener("pagehide", restoreDraft);
+    return () => {
+      window.removeEventListener("pagehide", restoreDraft);
+      // reset()도 보관본을 덮어쓰므로, 비운 다음에 원래 보관본을 되돌립니다.
+      useSongStore.getState().reset();
+      restoreDraft();
     };
   }, []);
 }
