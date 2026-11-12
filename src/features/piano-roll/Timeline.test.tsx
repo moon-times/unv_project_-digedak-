@@ -23,7 +23,7 @@ describe("Timeline", () => {
       screen.getByText("① 녹음하면 멜로디가 여기에 나타나요"),
     ).toBeTruthy();
     expect(screen.getByText("② 분석하면 마디마다 코드가 붙어요")).toBeTruthy();
-    expect(screen.getAllByText("③ 반주 단계에서 채워져요")).toHaveLength(3);
+    expect(screen.getAllByText("③ 반주 단계에서 채워져요")).toHaveLength(4);
     expect(screen.getByText("마디")).toBeTruthy();
     expect(screen.getByText("8")).toBeTruthy();
   });
@@ -39,6 +39,7 @@ describe("Timeline", () => {
       drums: [note(36, 0)],
       bass: [note(36, 0), note(43, 8)],
       keys: [],
+      guitar: [],
     });
     const { container } = render(<Timeline />);
 

@@ -11,6 +11,7 @@ import {
   type Note,
   type SongState,
   type Track,
+  withAllTracks,
 } from "@/types/song";
 
 const step = z.number().int().min(0);
@@ -65,9 +66,12 @@ export const SongStateSchema: z.ZodType<SongState> = z.object({
       drums: z.array(NoteSchema),
       bass: z.array(NoteSchema),
       keys: z.array(NoteSchema),
+      // 기타 트랙 이전에 저장된 곡에는 없습니다.
+      guitar: z.array(NoteSchema).default([]),
     })
     .optional(),
-  tracks: z.array(TrackSchema),
+  // 트랙이 늘어나기 전에 저장된 곡은 빠진 트랙을 기본값으로 채웁니다.
+  tracks: z.array(TrackSchema).transform(withAllTracks),
   recording: z
     .object({
       path: z.string(),

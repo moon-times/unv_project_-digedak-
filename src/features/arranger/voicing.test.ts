@@ -3,6 +3,7 @@ import { parseChordSymbol } from "@/lib/music";
 import {
   bassPitch,
   chooseVoicing,
+  guitarVoicing,
   voiceAt,
   voicingCandidates,
 } from "./voicing";
@@ -57,5 +58,21 @@ describe("voicing", () => {
   it("voiceAt은 보이싱을 넘으면 옥타브 위로 잇는다", () => {
     expect(voiceAt([60, 64, 67], 3)).toBe(72);
     expect(voiceAt([60, 64, 67], 4)).toBe(76);
+  });
+});
+
+describe("guitarVoicing", () => {
+  it("근음을 E2~D#3에 두고 6줄 바레 코드처럼 쌓는다", () => {
+    expect(guitarVoicing(chord("C"))).toEqual([48, 55, 60, 64, 67, 72]);
+    expect(guitarVoicing(chord("Am"))).toEqual([45, 52, 57, 60, 64, 69]);
+    expect(guitarVoicing(chord("E"))).toEqual([40, 47, 52, 56, 59, 64]);
+  });
+
+  it("7화음은 맨 위 줄에 7도를 넣는다", () => {
+    expect(guitarVoicing(chord("G7"))).toEqual([43, 50, 55, 59, 62, 65]);
+  });
+
+  it("슬래시 코드는 지정된 베이스음을 가장 낮은 줄에 둔다", () => {
+    expect(guitarVoicing(chord("C/E"))[0]).toBe(40);
   });
 });

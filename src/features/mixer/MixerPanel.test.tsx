@@ -19,11 +19,11 @@ describe("formatDb", () => {
 });
 
 describe("MixerPanel", () => {
-  test("네 트랙을 이름과 dB 값으로 보여 준다", () => {
+  test("다섯 트랙을 이름과 dB 값으로 보여 준다", () => {
     render(<MixerPanel />);
-    for (const name of ["멜로디", "드럼", "베이스", "건반"])
+    for (const name of ["멜로디", "드럼", "베이스", "건반", "기타"])
       expect(screen.getByLabelText(name)).toBeTruthy();
-    expect(screen.getAllByText("0 dB")).toHaveLength(4);
+    expect(screen.getAllByText("0 dB")).toHaveLength(5);
   });
 
   test("볼륨 슬라이더는 그 트랙의 volume만 바꾼다", () => {
@@ -48,5 +48,20 @@ describe("MixerPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: "멜로디 솔로" }));
     expect(track("melody").solo).toBe(true);
     expect(track("drums").solo).toBe(false);
+  });
+});
+
+describe("악기 고르기", () => {
+  test("멜로디 · 기타만 악기를 고를 수 있고, 고르면 트랙 악기가 바뀐다", () => {
+    render(<MixerPanel />);
+    expect(screen.queryByLabelText("드럼 악기")).toBeNull();
+    fireEvent.change(screen.getByLabelText("멜로디 악기"), {
+      target: { value: "violin" },
+    });
+    expect(track("melody").instrument).toBe("violin");
+    fireEvent.change(screen.getByLabelText("기타 악기"), {
+      target: { value: "distortion_guitar" },
+    });
+    expect(track("guitar").instrument).toBe("distortion_guitar");
   });
 });

@@ -74,3 +74,28 @@ export function voiceAt(voicing: number[], index: number): number {
   const octave = Math.floor(index / voicing.length);
   return voicing[index % voicing.length] + octave * 12;
 }
+
+/** 기타 코드의 가장 낮은 줄(근음)이 들어갈 범위: E2(40) ~ D#3(51) */
+const GUITAR_LOWEST = 40;
+
+/**
+ * 기타 코드 모양(6줄 바레 코드처럼): 근음 · 5도 · 옥타브 근음 · 3도 · 5도 · (7도 또는 옥타브).
+ * 슬래시 코드는 지정된 베이스음을 가장 낮은 줄에 둡니다.
+ * 0~2번은 파워코드(근음 · 5도 · 옥타브)로도 씁니다.
+ */
+export function guitarVoicing(chord: ChordInfo): number[] {
+  const [, third, fifth, seventh] = CHORD_INTERVALS[chord.quality];
+  const root = GUITAR_LOWEST + pitchClass(chord.root - GUITAR_LOWEST);
+  const low =
+    chord.bass === undefined
+      ? root
+      : GUITAR_LOWEST + pitchClass(chord.bass - GUITAR_LOWEST);
+  return [
+    low,
+    root + fifth,
+    root + 12,
+    root + 12 + third,
+    root + 12 + fifth,
+    seventh === undefined ? root + 24 : root + 12 + seventh,
+  ].sort((a, b) => a - b);
+}

@@ -56,6 +56,31 @@ export function toMidiVelocity(velocity: number): number {
   return Math.round(Math.min(1, Math.max(0, velocity)) * 127);
 }
 
+/** 트랙별로 고를 수 있는 악기 (이름 → 화면 표시). 첫 항목이 아닌 기본값은 src/types/song.ts에 있습니다. */
+export const INSTRUMENT_CHOICES: Partial<
+  Record<TrackId, Record<string, string>>
+> = {
+  melody: {
+    flute: "플루트",
+    piano: "그랜드 피아노",
+    electric_piano_1: "일렉트릭 피아노",
+    vibraphone: "비브라폰",
+    clarinet: "클라리넷",
+    alto_sax: "알토 색소폰",
+    violin: "바이올린",
+    ocarina: "오카리나",
+    whistle: "휘파람",
+  },
+  guitar: {
+    acoustic_guitar_steel: "통기타",
+    acoustic_guitar_nylon: "클래식 기타",
+    electric_guitar_clean: "일렉 기타 (맑은 소리)",
+    electric_guitar_jazz: "재즈 기타",
+    overdriven_guitar: "오버드라이브 기타",
+    distortion_guitar: "디스토션 기타",
+  },
+};
+
 /**
  * 악기 이름으로 smplr 악기를 만듭니다.
  * - "piano": Splendid Grand Piano

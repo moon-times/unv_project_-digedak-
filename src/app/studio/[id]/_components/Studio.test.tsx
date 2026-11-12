@@ -82,7 +82,7 @@ describe("스튜디오 진행 바", () => {
     const store = useSongStore.getState();
     store.setMelody([note]);
     store.setChords([chord]);
-    store.setAccompaniment({ drums: [], bass: [], keys: [] });
+    store.setAccompaniment({ drums: [], bass: [], keys: [], guitar: [] });
     store.setStep("mix");
     render(<Studio projectId={null} />);
 
