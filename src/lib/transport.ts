@@ -8,7 +8,12 @@ export function stepsPerBar([beats, beatUnit]: SongState["timeSignature"]) {
 
 /** 멜로디·코드·반주 중 가장 늦게 끝나는 음의 끝 위치(step) */
 export function songEndStep(song: SongState) {
-  const { drums = [], bass = [], keys = [] } = song.accompaniment ?? {};
+  const {
+    drums = [],
+    bass = [],
+    keys = [],
+    guitar = [],
+  } = song.accompaniment ?? {};
   let end = 0;
   for (const item of [
     ...song.melody,
@@ -16,6 +21,7 @@ export function songEndStep(song: SongState) {
     ...drums,
     ...bass,
     ...keys,
+    ...guitar,
   ]) {
     end = Math.max(end, item.start + item.duration);
   }

@@ -16,7 +16,12 @@ import {
   type Playable,
 } from "./instruments";
 import { trackGains } from "./mix";
-import { playbackEndStep, secondsPerStep, trackNotes } from "./schedule";
+import {
+  playbackEndStep,
+  secondsPerStep,
+  strumDelays,
+  trackNotes,
+} from "./schedule";
 
 type ToneModule = typeof import("tone");
 type SmplrModule = typeof import("smplr");
@@ -172,8 +177,10 @@ export class Player {
     const notes = trackNotes(song);
     for (const track of TRACK_IDS) {
       if (notes[track].length === 0) continue;
-      const events = notes[track].map((note) => ({
+      const delays = strumDelays(track, notes[track]);
+      const events = notes[track].map((note, i) => ({
         time: `${note.start * ticksPerStep}i`,
+        delay: delays[i],
         pitch: note.pitch,
         steps: note.duration,
         velocity: note.velocity,
@@ -184,7 +191,7 @@ export class Player {
         if (!instrument || note === null) return;
         instrument.start({
           note,
-          time,
+          time: time + event.delay,
           // 길이는 연주 시점의 BPM으로 계산해 템포를 바꿔도 맞게 합니다.
           duration: event.steps * secondsPerStep(transport.bpm.value),
           velocity: toMidiVelocity(event.velocity),

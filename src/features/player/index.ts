@@ -11,10 +11,13 @@ export {
   playbackEndStep,
   scheduleSong,
   secondsPerStep,
+  STRUM_SECONDS,
+  strumDelays,
   trackNotes,
   type ScheduledNote,
 } from "./schedule";
 export { dbToGain, trackGains } from "./mix";
+export { INSTRUMENT_CHOICES } from "./instruments";
 export {
   usePlaybackStep,
   usePlayerState,

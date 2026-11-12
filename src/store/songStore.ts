@@ -12,6 +12,7 @@ import {
   type Style,
   type Track,
   type TrackId,
+  upgradeSong,
 } from "@/types/song";
 
 export const STUDIO_STEPS = ["record", "refine", "arrange", "mix"] as const;
@@ -136,7 +137,12 @@ export const useSongStore = create<SongStore>()(
     },
     {
       name: GUEST_DRAFT_KEY,
-      version: 1,
+      // 2: 기타 트랙 추가. 그 전에 보관된 게스트 곡은 빠진 트랙을 채워서 불러옵니다.
+      version: 2,
+      migrate: (persisted) => {
+        const draft = persisted as Partial<Pick<SongStore, "song" | "dirty">>;
+        return draft.song ? { ...draft, song: upgradeSong(draft.song) } : draft;
+      },
       partialize: guestDraft,
       // 서버 렌더링과 첫 화면이 달라지지 않도록, 스튜디오가 뜬 뒤 rehydrate()로 직접 불러옵니다.
       skipHydration: true,

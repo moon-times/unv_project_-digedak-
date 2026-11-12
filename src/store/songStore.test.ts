@@ -33,7 +33,7 @@ describe("getAvailableSteps", () => {
     song.chords = [chord];
     expect(getAvailableSteps(song)).toEqual(["record", "refine", "arrange"]);
 
-    song.accompaniment = { drums: [], bass: [], keys: [] };
+    song.accompaniment = { drums: [], bass: [], keys: [], guitar: [] };
     expect(getAvailableSteps(song)).toEqual([
       "record",
       "refine",

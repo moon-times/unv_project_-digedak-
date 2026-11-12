@@ -2,8 +2,8 @@
 // 같은 입력이면 항상 같은 결과가 나오므로(무작위 없음) 장르를 바꿀 때마다 다시 불러도 됩니다.
 import { parseChordSymbol, type ChordInfo } from "@/lib/music";
 import type { Accompaniment, Chord, Note, Style } from "@/types/song";
-import { DRUM, STYLE_PATTERNS } from "./patterns";
-import { bassPitch, chooseVoicing, voiceAt } from "./voicing";
+import { DRUM, STYLE_PATTERNS, type GuitarHit } from "./patterns";
+import { bassPitch, chooseVoicing, guitarVoicing, voiceAt } from "./voicing";
 
 const DEFAULT_STEPS_PER_BAR = 16;
 /** 이 BPM 이상이면 하이햇 간격을 두 배로 벌려 너무 바쁘지 않게 합니다. */
@@ -38,6 +38,14 @@ function chordAt(chords: ParsedChord[], step: number): ParsedChord | undefined {
   return chords.find((chord) => chord.start <= step && step < chord.end);
 }
 
+/** 스트로크 종류에 맞춰 기타 코드 모양에서 칠 줄을 고릅니다. */
+function guitarStrings(voicing: number[], strum: GuitarHit["strum"]): number[] {
+  if (strum === "down") return voicing;
+  if (strum === "up") return voicing.slice(-3);
+  if (strum === "power") return voicing.slice(0, 3);
+  return strum.map((index) => voicing[Math.min(index, voicing.length - 1)]);
+}
+
 const byTime = (a: Note, b: Note) => a.start - b.start || a.pitch - b.pitch;
 
 export function generateAccompaniment(
@@ -61,6 +69,7 @@ export function generateAccompaniment(
   const drums: Note[] = [];
   const bass: Note[] = [];
   const keys: Note[] = [];
+  const guitar: Note[] = [];
   const hatInterval =
     bpm >= FAST_BPM ? pattern.hatInterval * 2 : pattern.hatInterval;
   const inBar = (step: number) => step < barSteps;
@@ -132,11 +141,22 @@ export function generateAccompaniment(
       for (const pitch of pitches)
         keys.push({ pitch, start, duration: length, velocity });
     }
+
+    // 기타: 코드 모양에서 스트로크 종류에 맞는 줄만 칩니다.
+    for (const { step, duration, strum, velocity } of pattern.guitar) {
+      const start = barStart + step;
+      const chord = chordAt(parsed, start);
+      if (!inBar(step) || start >= barEnd || !chord) continue;
+      const length = fits(start, Math.min(duration, chord.end - start));
+      for (const pitch of guitarStrings(guitarVoicing(chord.info), strum))
+        guitar.push({ pitch, start, duration: length, velocity });
+    }
   }
 
   return {
     drums: drums.sort(byTime),
     bass: bass.sort(byTime),
     keys: keys.sort(byTime),
+    guitar: guitar.sort(byTime),
   };
 }

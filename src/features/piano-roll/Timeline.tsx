@@ -38,7 +38,12 @@ export function Timeline({ position }: { position?: Step }) {
   const stepWidth = fitStepWidth(sectionWidth, totalSteps);
   const barSteps = stepsPerBar(song.timeSignature);
   const beatSteps = 16 / song.timeSignature[1];
-  const { drums = [], bass = [], keys = [] } = song.accompaniment ?? {};
+  const {
+    drums = [],
+    bass = [],
+    keys = [],
+    guitar = [],
+  } = song.accompaniment ?? {};
 
   const grid = (
     <Grid
@@ -119,6 +124,7 @@ export function Timeline({ position }: { position?: Step }) {
             ["드럼", "drums", drums],
             ["베이스", "bass", bass],
             ["건반", "keys", keys],
+            ["기타", "guitar", guitar],
           ] as const
         ).map(([label, lane, notes]) => (
           <Row

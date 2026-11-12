@@ -34,6 +34,20 @@ export type KeysHit = {
   velocity: number;
 };
 
+/**
+ * 기타 이벤트. 보이싱은 기타 코드 모양(guitarVoicing)이고 0번이 가장 낮은 줄입니다.
+ * - "down": 모든 줄을 위로 긁기(낮은 줄 → 높은 줄)
+ * - "up": 높은 세 줄만 가볍게 (업스트로크)
+ * - "power": 근음 · 5도 · 옥타브만 (록 파워코드)
+ * - 숫자 배열: 그 줄만 뜯기 (아르페지오)
+ */
+export type GuitarHit = {
+  step: number;
+  duration: number;
+  strum: "down" | "up" | "power" | number[];
+  velocity: number;
+};
+
 export type StylePattern = {
   drums: DrumHit[];
   /** 마디 첫 박에 크래시를 칠 간격(마디 수). 0이면 곡 처음에만 */
@@ -43,7 +57,15 @@ export type StylePattern = {
   hatVelocity: [strong: number, weak: number];
   bass: BassHit[];
   keys: KeysHit[];
+  guitar: GuitarHit[];
 };
+
+const strum = (
+  step: number,
+  duration: number,
+  kind: GuitarHit["strum"],
+  velocity: number,
+): GuitarHit => ({ step, duration, strum: kind, velocity });
 
 const hit = (step: number, pitch: number, velocity: number): DrumHit => ({
   step,
@@ -76,6 +98,15 @@ export const STYLE_PATTERNS: Record<Style, StylePattern> = {
       { step: 8, duration: 6, voices: "chord", velocity: 0.6 },
       { step: 14, duration: 2, voices: "chord", velocity: 0.5 },
     ],
+    // 다운 · 다운업 · 업다운업 스트로크
+    guitar: [
+      strum(0, 4, "down", 0.7),
+      strum(4, 2, "down", 0.6),
+      strum(6, 4, "up", 0.45),
+      strum(10, 2, "up", 0.45),
+      strum(12, 2, "down", 0.6),
+      strum(14, 2, "up", 0.45),
+    ],
   },
 
   // 발라드: 사이드스틱으로 부드러운 백비트, 긴 베이스, 8분음표 아르페지오
@@ -99,6 +130,13 @@ export const STYLE_PATTERNS: Record<Style, StylePattern> = {
       voices: [voice],
       velocity: i % 4 === 0 ? 0.6 : 0.45,
     })),
+    // 4분음표 핑거피킹: 근음 줄을 짚고 높은 줄을 오르내림 (건반 8분 아르페지오와 엇갈리게)
+    guitar: [
+      strum(0, 4, [0, 3], 0.5),
+      strum(4, 4, [4], 0.4),
+      strum(8, 4, [1, 5], 0.45),
+      strum(12, 4, [4], 0.4),
+    ],
   },
 
   // 록: 강한 백비트, 8분음표 근음 베이스, 길게 누르는 건반
@@ -123,5 +161,9 @@ export const STYLE_PATTERNS: Record<Style, StylePattern> = {
       { step: 0, duration: 8, voices: "chord", velocity: 0.7 },
       { step: 8, duration: 8, voices: "chord", velocity: 0.65 },
     ],
+    // 8분음표 파워코드, 박마다 강세
+    guitar: Array.from({ length: 8 }, (_, i) =>
+      strum(i * 2, 2, "power", i % 2 === 0 ? 0.85 : 0.65),
+    ),
   },
 };

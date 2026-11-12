@@ -40,7 +40,12 @@ export function noteName(pitch: number) {
 /** 타임라인 전체 길이(step). 마지막 음이 들어가는 마디까지, 최소 MIN_BARS 마디 */
 export function timelineSteps(song: TimelineSong) {
   const barSteps = stepsPerBar(song.timeSignature);
-  const { drums = [], bass = [], keys = [] } = song.accompaniment ?? {};
+  const {
+    drums = [],
+    bass = [],
+    keys = [],
+    guitar = [],
+  } = song.accompaniment ?? {};
   let end = 0;
   for (const item of [
     ...song.melody,
@@ -48,6 +53,7 @@ export function timelineSteps(song: TimelineSong) {
     ...drums,
     ...bass,
     ...keys,
+    ...guitar,
   ]) {
     end = Math.max(end, item.start + item.duration);
   }

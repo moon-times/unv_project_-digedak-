@@ -14,8 +14,30 @@ export function secondsPerStep(bpm: number): number {
 
 /** 트랙별 재생할 음표. 반주가 아직 없으면 빈 배열 */
 export function trackNotes(song: SongState): Record<TrackId, Note[]> {
-  const { drums = [], bass = [], keys = [] } = song.accompaniment ?? {};
-  return { melody: song.melody, drums, bass, keys };
+  const {
+    drums = [],
+    bass = [],
+    keys = [],
+    guitar = [],
+  } = song.accompaniment ?? {};
+  return { melody: song.melody, drums, bass, keys, guitar };
+}
+
+/** 기타를 긁을 때 줄 사이 시간 차(초) */
+export const STRUM_SECONDS = 0.012;
+
+/**
+ * 음마다 늦출 시간(초). 기타는 같은 위치의 음을 낮은 줄부터 STRUM_SECONDS씩 늦게 쳐서
+ * 한 번에 "쾅" 누르는 소리 대신 긁는 소리를 냅니다. 다른 트랙은 모두 0입니다.
+ */
+export function strumDelays(track: TrackId, notes: Note[]): number[] {
+  if (track !== "guitar") return notes.map(() => 0);
+  return notes.map(
+    (note) =>
+      notes.filter(
+        (other) => other.start === note.start && other.pitch < note.pitch,
+      ).length * STRUM_SECONDS,
+  );
 }
 
 /** 재생이 끝나는 위치(step). 재생 바의 곡 길이와 같게 마디 단위로 맞춥니다. */
@@ -43,16 +65,17 @@ export function scheduleSong(song: SongState, fromStep = 0): ScheduledNote[] {
   const notes = trackNotes(song);
   const scheduled: ScheduledNote[] = [];
   for (const track of TRACK_IDS) {
-    for (const note of notes[track]) {
-      if (note.start < fromStep) continue;
+    const delays = strumDelays(track, notes[track]);
+    notes[track].forEach((note, i) => {
+      if (note.start < fromStep) return;
       scheduled.push({
         track,
         pitch: note.pitch,
-        time: (note.start - fromStep) * unit,
+        time: (note.start - fromStep) * unit + delays[i],
         duration: note.duration * unit,
         velocity: note.velocity,
       });
-    }
+    });
   }
   return scheduled.sort((a, b) => a.time - b.time);
 }

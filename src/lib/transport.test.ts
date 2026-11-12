@@ -36,7 +36,7 @@ describe("곡 길이", () => {
       ...createEmptySong(),
       melody: [note(0, 4), note(100, 6)],
       chords: [{ symbol: "C", start: 96, duration: 16 }],
-      accompaniment: { drums: [note(120, 2)], bass: [], keys: [] },
+      accompaniment: { drums: [note(120, 2)], bass: [], keys: [], guitar: [] },
     };
     expect(songEndStep(song)).toBe(122);
     expect(countBars(song)).toBe(8);

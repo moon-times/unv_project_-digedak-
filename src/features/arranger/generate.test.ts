@@ -119,9 +119,45 @@ describe("generateAccompaniment", () => {
       drums: [],
       bass: [],
       keys: [],
+      guitar: [],
     });
     expect(
       generateAccompaniment(C_F_G_C, "pop", 100, { stepsPerBar: 0 }),
     ).toEqual(generateAccompaniment(C_F_G_C, "pop", 100));
+  });
+});
+
+describe("기타", () => {
+  const guitarOf = (style: (typeof STYLES)[number]) =>
+    generateAccompaniment(C_F_G_C, style, 100).guitar;
+
+  it("모든 장르에 기타 줄이 있고, 기타 음역(E2~E5) 안에 있다", () => {
+    for (const style of STYLES) {
+      const guitar = guitarOf(style);
+      expect(guitar.length).toBeGreaterThan(0);
+      for (const note of guitar) {
+        expect(note.pitch).toBeGreaterThanOrEqual(40);
+        expect(note.pitch).toBeLessThanOrEqual(76);
+      }
+    }
+  });
+
+  it("팝은 다운 스트로크에 6줄, 업 스트로크에 높은 3줄을 친다", () => {
+    const guitar = guitarOf("pop");
+    expect(at(guitar, 0).map((n) => n.pitch)).toEqual([48, 55, 60, 64, 67, 72]);
+    expect(at(guitar, 6).map((n) => n.pitch)).toEqual([64, 67, 72]);
+  });
+
+  it("록은 8분음표마다 파워코드(근음 · 5도 · 옥타브)", () => {
+    const guitar = guitarOf("rock");
+    for (let step = 0; step < 16; step += 2)
+      expect(at(guitar, step).map((n) => n.pitch)).toEqual([48, 55, 60]);
+    // 둘째 마디는 F 코드
+    expect(at(guitar, 16).map((n) => n.pitch)).toEqual([41, 48, 53]);
+  });
+
+  it("발라드는 한 번에 한두 줄만 뜯는다", () => {
+    for (let step = 0; step < 64; step += 4)
+      expect(at(guitarOf("ballad"), step).length).toBeLessThanOrEqual(2);
   });
 });

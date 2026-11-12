@@ -12,7 +12,7 @@ type FakeInstrument = {
 };
 type PartCallback = (
   time: number,
-  event: { pitch: number; steps: number; velocity: number },
+  event: { pitch: number; steps: number; velocity: number; delay: number },
 ) => void;
 
 const fake = vi.hoisted(() => {
@@ -110,6 +110,7 @@ const SONG: SongState = {
     drums: [{ pitch: 38, start: 4, duration: 1, velocity: 0.5 }],
     bass: [{ pitch: 36, start: 0, duration: 8, velocity: 0.8 }],
     keys: [],
+    guitar: [],
   },
 };
 
@@ -143,11 +144,12 @@ describe("Player", () => {
     await player.play();
     expect(player.getState().status).toBe("playing");
     expect(fake.transport.start).toHaveBeenCalled();
-    // 트랙 4개(멜로디·드럼·베이스·건반) 악기, 음표가 있는 3개 트랙만 Part
+    // 트랙 5개(멜로디·드럼·베이스·건반·기타) 악기, 음표가 있는 3개 트랙만 Part
     expect(fake.state.instruments.map((i) => i.name).sort()).toEqual([
+      "acoustic_guitar_steel",
       "drums",
       "electric_bass_finger",
-      "piano",
+      "flute",
       "piano",
     ]);
     expect(fake.state.parts).toHaveLength(3);
@@ -162,7 +164,7 @@ describe("Player", () => {
     // PPQ 192 → 1 step = 48 tick
     const drumPart = livePart(1);
     expect(drumPart.events[0].time).toBe("192i");
-    drumPart.callback(1.5, { pitch: 38, steps: 1, velocity: 0.5 });
+    drumPart.callback(1.5, { pitch: 38, steps: 1, velocity: 0.5, delay: 0 });
     expect(instrumentNamed("drums").start).toHaveBeenCalledWith({
       note: "snare-m",
       time: 1.5,
@@ -172,7 +174,7 @@ describe("Player", () => {
 
     // 연주 시점의 BPM으로 길이 계산
     fake.transport.bpm.value = 60;
-    livePart(2).callback(0, { pitch: 36, steps: 8, velocity: 0.8 });
+    livePart(2).callback(0, { pitch: 36, steps: 8, velocity: 0.8, delay: 0 });
     expect(instrumentNamed("electric_bass_finger").start).toHaveBeenCalledWith(
       expect.objectContaining({ note: 36, duration: 2 }),
     );
@@ -247,11 +249,11 @@ describe("Player", () => {
     const oldMelody = fake.state.instruments[0];
 
     const tracks = SONG.tracks.map((t) =>
-      t.id === "melody" ? { ...t, instrument: "flute" } : t,
+      t.id === "melody" ? { ...t, instrument: "violin" } : t,
     );
     await player.load({ ...SONG, tracks });
     expect(fake.state.instruments).toHaveLength(before + 1);
-    expect(fake.state.instruments.at(-1)!.name).toBe("flute");
+    expect(fake.state.instruments.at(-1)!.name).toBe("violin");
     expect(oldMelody.dispose).toHaveBeenCalled();
     // 악기·믹서만 바뀌면 기존 Part를 그대로 둡니다.
     expect(fake.state.parts).toHaveLength(3);

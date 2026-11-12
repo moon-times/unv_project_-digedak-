@@ -6,6 +6,8 @@ import {
   playbackEndStep,
   scheduleSong,
   secondsPerStep,
+  STRUM_SECONDS,
+  strumDelays,
   trackNotes,
 } from "./schedule";
 
@@ -49,6 +51,7 @@ describe("schedule", () => {
         drums: [note(36, 0, 1)],
         bass: [note(36, 0, 8)],
         keys: [],
+        guitar: [],
       },
     });
     expect(scheduleSong(s)).toEqual([
@@ -76,6 +79,7 @@ describe("mix", () => {
       drums: 1,
       bass: 1,
       keys: 1,
+      guitar: 1,
     });
 
     const muted = tracks.map((t) =>
@@ -88,14 +92,16 @@ describe("mix", () => {
     );
     const gains = trackGains(solo);
     expect(gains.bass).toBeCloseTo(0.501, 3);
-    expect([gains.melody, gains.drums, gains.keys]).toEqual([0, 0, 0]);
+    expect([gains.melody, gains.drums, gains.keys, gains.guitar]).toEqual([
+      0, 0, 0, 0,
+    ]);
   });
 
   it("솔로한 트랙도 뮤트하면 0", () => {
     const tracks = createEmptySong().tracks.map((t) =>
       t.id === "keys" ? { ...t, solo: true, muted: true } : t,
     );
-    expect(Object.values(trackGains(tracks))).toEqual([0, 0, 0, 0]);
+    expect(Object.values(trackGains(tracks))).toEqual([0, 0, 0, 0, 0]);
   });
 });
 
@@ -113,5 +119,45 @@ describe("instruments", () => {
     expect(toMidiVelocity(1)).toBe(127);
     expect(toMidiVelocity(0.5)).toBe(64);
     expect(toMidiVelocity(2)).toBe(127);
+  });
+});
+
+describe("strumDelays", () => {
+  const n = (pitch: number, start: number) => ({
+    pitch,
+    start,
+    duration: 2,
+    velocity: 0.7,
+  });
+
+  it("기타는 같은 위치의 음을 낮은 줄부터 조금씩 늦게 친다", () => {
+    const notes = [n(48, 0), n(55, 0), n(60, 0), n(48, 4)];
+    expect(strumDelays("guitar", notes)).toEqual([
+      0,
+      STRUM_SECONDS,
+      2 * STRUM_SECONDS,
+      0,
+    ]);
+  });
+
+  it("다른 트랙은 늦추지 않는다", () => {
+    expect(strumDelays("keys", [n(60, 0), n(64, 0)])).toEqual([0, 0]);
+  });
+
+  it("scheduleSong에도 반영된다", () => {
+    const song: SongState = {
+      ...createEmptySong(),
+      bpm: 120,
+      accompaniment: {
+        drums: [],
+        bass: [],
+        keys: [],
+        guitar: [n(48, 4), n(55, 4)],
+      },
+    };
+    expect(scheduleSong(song).map((e) => e.time)).toEqual([
+      0.5,
+      0.5 + STRUM_SECONDS,
+    ]);
   });
 });
