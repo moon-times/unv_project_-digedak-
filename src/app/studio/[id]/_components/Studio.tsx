@@ -1,6 +1,8 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
+import mascot from "@/app/icon.png";
 import { useSyncExternalStore, type ReactNode } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { Timeline } from "@/features/piano-roll/Timeline";
@@ -29,7 +31,7 @@ import {
   PlayIcon,
   StopIcon,
 } from "./icons";
-import { ProgressBar } from "./ProgressBar";
+import { ProgressBar, STEP_LABELS } from "./ProgressBar";
 import { Slot } from "./Slot";
 import { countBars, formatTime, songDurationSeconds } from "@/lib/transport";
 
@@ -39,6 +41,14 @@ const PANELS: Record<StudioStep, ReactNode> = {
   refine: <Slot label="보정 · AI 분석 패널" owner="A" />,
   arrange: <Slot label="반주 패널 (장르 카드 · 빠르기)" owner="B" />,
   mix: <Slot label="믹서 패널" owner="B" />,
+};
+
+// 패널 맨 위 한 줄 설명. 제목은 STEP_LABELS. 제목 · 설명은 틀이 그리고 A · B 패널은 도구만 만듭니다.
+const PANEL_INTROS: Record<StudioStep, string> = {
+  record: "버튼을 누르고 최대 30초 동안 흥얼거려 주세요.",
+  refine: "어긋난 음은 피아노롤에서 고치고, AI가 찾은 키와 코드를 확인하세요.",
+  arrange: "장르를 고르면 멜로디는 그대로 두고 반주만 새로 만들어요.",
+  mix: "트랙마다 소리 크기를 맞추고, 뮤트로 끄거나 솔로로 하나만 들어 보세요.",
 };
 
 // 패널 맨 아래 큰 버튼 문구. 마지막 단계(믹싱)는 내보내기 팝업을 엽니다.
@@ -72,7 +82,15 @@ export function Studio({ projectId }: { projectId: string | null }) {
         <main className="min-w-0 flex-1 px-5 pt-4 pb-5">
           <TimelineWithPlayhead />
         </main>
-        <aside className="flex w-[380px] shrink-0 flex-col gap-4 border-l-2 border-foreground/10 px-5 pt-5 pb-5">
+        <aside className="flex w-[380px] shrink-0 flex-col gap-4 border-l-2 border-ink bg-surface px-5 pt-5 pb-5">
+          <div>
+            <h2 className="font-display text-[28px] leading-tight">
+              {STEP_LABELS[step]}
+            </h2>
+            <p className="mt-1 text-[14px] text-ink-muted">
+              {PANEL_INTROS[step]}
+            </p>
+          </div>
           <div className="min-h-0 flex-1">{PANELS[step]}</div>
           <NextStepButton step={step} available={available} onNext={setStep} />
         </aside>
@@ -93,13 +111,14 @@ const SYNC_MESSAGES: Record<Exclude<SyncPhase, "ready">, string> = {
 function SyncMessage({ phase }: { phase: Exclude<SyncPhase, "ready"> }) {
   return (
     <div className="flex h-dvh flex-col items-center justify-center gap-4 p-6 text-center">
+      <Image src={mascot} alt="" width={120} height={120} />
       <p role={phase === "loading" ? "status" : "alert"} className="text-lg">
         {SYNC_MESSAGES[phase]}
       </p>
       {phase !== "loading" && (
         <Link
           href="/projects"
-          className="flex min-h-11 items-center rounded-full border-2 border-ink px-5 font-semibold"
+          className="flex min-h-11 items-center rounded-full border-2 border-ink bg-surface px-5 font-semibold shadow-[0_3px_0_var(--color-ink)]"
         >
           내 프로젝트로
         </Link>
@@ -126,7 +145,7 @@ function NextStepButton({
       type="button"
       disabled={disabled}
       onClick={() => next && onNext(next)}
-      className="flex min-h-[52px] w-full items-center justify-center gap-2 rounded-full border-2 border-foreground bg-foreground px-5 text-[17px] font-bold text-background shadow-[0_4px_0_var(--foreground)] disabled:opacity-40 disabled:shadow-none"
+      className="flex min-h-[52px] w-full items-center justify-center gap-2 rounded-full border-2 border-ink bg-primary px-5 text-[17px] font-bold text-on-primary shadow-[0_4px_0_var(--color-ink)] disabled:opacity-40 disabled:shadow-none"
     >
       {step === "mix" && <DownloadIcon size={18} />}
       {NEXT_LABELS[step]}
@@ -147,7 +166,7 @@ function StudioHeader({ auth }: { auth: Auth }) {
   const lastSavedAt = useSongStore((s) => s.lastSavedAt);
 
   return (
-    <header className="flex h-[65px] shrink-0 items-center gap-3.5 px-5">
+    <header className="flex h-[66px] shrink-0 items-center gap-3.5 border-b-2 border-ink bg-surface px-5">
       {auth === "loading" ? (
         // 돌아갈 곳이 정해지기 전에는 같은 크기의 빈 칸만 둡니다.
         <span aria-hidden className="size-11 shrink-0" />
@@ -157,20 +176,21 @@ function StudioHeader({ auth }: { auth: Auth }) {
           aria-label={
             isGuest ? "처음 화면으로 돌아가기" : "내 프로젝트로 돌아가기"
           }
-          className="flex size-11 shrink-0 items-center justify-center rounded-full hover:bg-foreground/5"
+          className="flex size-11 shrink-0 items-center justify-center rounded-full hover:bg-ink/5"
         >
           <ChevronLeftIcon />
         </Link>
       )}
+      <Image src={mascot} alt="" width={40} height={40} className="shrink-0" />
 
       <div className="flex min-w-0 flex-1 flex-col">
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           aria-label="곡 제목"
-          className="min-w-0 bg-transparent text-[22px] leading-tight font-semibold outline-none"
+          className="min-w-0 bg-transparent font-display text-[22px] leading-tight outline-none"
         />
-        <span className="flex items-center gap-1.5 text-[13px] opacity-70">
+        <span className="flex items-center gap-1.5 text-[13px] text-ink-muted">
           <CloudIcon size={15} />
           {auth !== "loading" &&
             saveStatusText(isGuest, saveStatus, dirty, lastSavedAt)}
@@ -180,7 +200,7 @@ function StudioHeader({ auth }: { auth: Auth }) {
       {isGuest && (
         <Link
           href={`/login?next=/studio/${projectId ?? "new"}`}
-          className="flex min-h-11 items-center rounded-full border-2 border-foreground px-4 text-[15px] font-semibold"
+          className="flex min-h-11 items-center rounded-full border-2 border-ink bg-surface px-4 text-[15px] font-semibold"
         >
           로그인
         </Link>
@@ -189,7 +209,7 @@ function StudioHeader({ auth }: { auth: Auth }) {
       <button
         type="button"
         disabled
-        className="flex min-h-11 items-center gap-2 rounded-full border-2 border-foreground bg-foreground px-5 text-[15px] font-bold text-background shadow-[0_3px_0_var(--foreground)] disabled:opacity-40 disabled:shadow-none"
+        className="flex min-h-11 items-center gap-2 rounded-full border-2 border-ink bg-primary px-5 text-[15px] font-bold text-on-primary shadow-[0_3px_0_var(--color-ink)] disabled:opacity-40 disabled:shadow-none"
       >
         <DownloadIcon size={18} />
         내보내기
@@ -236,7 +256,7 @@ function TransportBar() {
   const loading = status === "loading";
 
   return (
-    <footer className="flex h-[66px] shrink-0 items-center gap-4 border-t-2 border-foreground/80 px-5">
+    <footer className="flex h-[66px] shrink-0 items-center gap-4 border-t-2 border-ink bg-surface px-5">
       <div className="flex gap-2">
         <button
           type="button"
@@ -246,7 +266,7 @@ function TransportBar() {
           onClick={() =>
             playing ? player.pause() : player.play().catch(() => {})
           }
-          className="flex size-[46px] items-center justify-center rounded-full border-2 border-foreground bg-foreground text-background disabled:opacity-40"
+          className="flex size-[46px] items-center justify-center rounded-full border-2 border-ink bg-primary text-on-primary disabled:opacity-40"
         >
           {playing ? <PauseIcon /> : <PlayIcon />}
         </button>
@@ -255,7 +275,7 @@ function TransportBar() {
           disabled={!playing && atStart}
           aria-label="정지"
           onClick={() => player.stop()}
-          className="flex size-[46px] items-center justify-center rounded-full border-2 border-foreground disabled:opacity-40"
+          className="flex size-[46px] items-center justify-center rounded-full border-2 border-ink bg-surface disabled:opacity-40"
         >
           <StopIcon size={16} />
         </button>
@@ -263,12 +283,12 @@ function TransportBar() {
       <span className="text-[19px] font-bold tabular-nums">
         {formatTime(seconds)} / {formatTime(songDurationSeconds(song))}
       </span>
-      <span className="text-[15px] opacity-70">
+      <span className="text-[15px] text-ink-muted">
         {song.bpm} BPM, {beats}/{beatUnit}박자
         {bars > 0 && `, ${bars}마디`}
       </span>
       {(loading || status === "error") && (
-        <span role="status" className="text-[15px] opacity-70">
+        <span role="status" className="text-[15px] text-ink-muted">
           {loading
             ? "악기 소리를 불러오는 중..."
             : "소리를 켜지 못했어요. 다시 눌러 보세요"}

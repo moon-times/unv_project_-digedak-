@@ -18,7 +18,10 @@ type Props = {
 // 끝난 단계 = 다음 단계가 열린 단계. 그 뒤 연결선도 채워집니다.
 export function ProgressBar({ current, available, onSelect }: Props) {
   return (
-    <nav aria-label="작업 단계" className="shrink-0 px-5 py-2">
+    <nav
+      aria-label="작업 단계"
+      className="shrink-0 border-b-2 border-ink px-5 py-2"
+    >
       <ol className="flex items-center gap-2.5">
         {STUDIO_STEPS.map((step, i) => {
           const isCurrent = step === current;
@@ -35,19 +38,20 @@ export function ProgressBar({ current, available, onSelect }: Props) {
                 disabled={!available.includes(step)}
                 aria-current={isCurrent ? "step" : undefined}
                 onClick={() => onSelect(step)}
-                className={`flex min-h-11 shrink-0 items-center gap-2.5 rounded-full border-2 py-1 pr-4 pl-1.5 disabled:opacity-40 ${
+                // 잠긴 단계는 투명도 대신 글자색으로만 구분합니다 (번호 원은 그대로).
+                className={`flex min-h-11 shrink-0 items-center gap-2.5 rounded-full border-2 py-1 pr-4 pl-1.5 disabled:text-ink-muted ${
                   isCurrent
-                    ? "border-foreground font-bold"
-                    : "border-transparent font-semibold enabled:hover:bg-foreground/5"
+                    ? "border-ink bg-surface font-bold"
+                    : "border-transparent font-semibold enabled:hover:bg-ink/5"
                 }`}
               >
                 <span
-                  className={`flex size-[30px] items-center justify-center rounded-full border-2 border-foreground text-sm ${
+                  className={`flex size-[30px] items-center justify-center rounded-full border-2 border-ink font-display text-[16px] ${
                     isCurrent
-                      ? "bg-foreground text-background"
+                      ? "bg-ink text-surface"
                       : isDone
-                        ? "bg-foreground/80 text-background"
-                        : "bg-background"
+                        ? "bg-primary text-on-primary"
+                        : "bg-surface text-ink"
                   }`}
                 >
                   {isDone && !isCurrent ? (
@@ -65,7 +69,7 @@ export function ProgressBar({ current, available, onSelect }: Props) {
                 <span
                   aria-hidden="true"
                   className={`h-[3px] flex-1 rounded-sm ${
-                    isDone ? "bg-foreground/80" : "bg-foreground/15"
+                    isDone ? "bg-primary" : "bg-line"
                   }`}
                 />
               )}
