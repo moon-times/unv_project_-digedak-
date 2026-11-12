@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useSyncExternalStore, type ReactNode } from "react";
 import { useShallow } from "zustand/react/shallow";
+import { ArrangePanel } from "@/features/arranger/ArrangePanel";
+import { MixerPanel } from "@/features/mixer/MixerPanel";
 import { Timeline } from "@/features/piano-roll/Timeline";
 import { useAuthUser } from "@/lib/supabase/useAuthUser";
 import { useProjectSync, type SyncPhase } from "./useProjectSync";
@@ -33,12 +35,12 @@ import { ProgressBar } from "./ProgressBar";
 import { Slot } from "./Slot";
 import { countBars, formatTime, songDurationSeconds } from "@/lib/transport";
 
-// A·B 패널이 준비되면 Slot 대신 해당 컴포넌트를 넣습니다.
+// A 패널이 준비되면 Slot 대신 해당 컴포넌트를 넣습니다.
 const PANELS: Record<StudioStep, ReactNode> = {
   record: <Slot label="녹음 패널 (빠르기 · 카운트인 포함)" owner="A" />,
   refine: <Slot label="보정 · AI 분석 패널" owner="A" />,
-  arrange: <Slot label="반주 패널 (장르 카드 · 빠르기)" owner="B" />,
-  mix: <Slot label="믹서 패널" owner="B" />,
+  arrange: <ArrangePanel />,
+  mix: <MixerPanel />,
 };
 
 // 패널 맨 아래 큰 버튼 문구. 마지막 단계(믹싱)는 내보내기 팝업을 엽니다.
