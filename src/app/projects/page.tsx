@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense, type ReactNode } from "react";
-import { listProjects } from "@/lib/supabase/projects";
+import { LIST_LIMIT, listProjects } from "@/lib/supabase/projects";
 import { createClient } from "@/lib/supabase/server";
 import { Logo } from "../_components/Logo";
 import mascot from "../icon.png";
@@ -50,7 +50,7 @@ async function Projects() {
   const supabase = await createClient();
   const { data } = await supabase.auth.getClaims();
   if (!data?.claims) redirect("/login?next=/projects");
-  const projects = await listProjects(supabase, data.claims.sub);
+  const { projects, total } = await listProjects(supabase, data.claims.sub);
   const email = data.claims.email ?? "";
 
   return (
@@ -75,7 +75,7 @@ async function Projects() {
           <h1 className="font-display text-[40px] leading-tight">
             내 프로젝트{" "}
             <span className="font-sans text-base text-ink-muted">
-              {projects.length}개
+              {total}개
             </span>
           </h1>
           <Link href="/studio/new" className={`ml-auto ${newProjectClass}`}>
@@ -102,6 +102,11 @@ async function Projects() {
               </li>
             ))}
           </ul>
+        )}
+        {total > projects.length && (
+          <p className="mt-6 text-center text-ink-muted">
+            최근 수정한 {LIST_LIMIT}개만 보여요
+          </p>
         )}
       </div>
     </>
