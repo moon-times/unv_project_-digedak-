@@ -30,7 +30,7 @@ afterEach(() => {
 describe("프로젝트 삭제 확인 창", () => {
   it("실패 문구는 다시 열면 사라짐", async () => {
     remove.mockRejectedValueOnce(new Error("network"));
-    render(<DeleteProjectButton id="p1" title="봄날" recordingPath={null} />);
+    render(<DeleteProjectButton id="p1" title="봄날" />);
 
     // [0]은 메뉴의 삭제, [1]은 확인 창 안의 삭제
     const buttons = screen.getAllByRole("button", {
