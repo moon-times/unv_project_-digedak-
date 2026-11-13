@@ -26,6 +26,8 @@ export type GroupOptions = {
 };
 
 const DEFAULT_VELOCITY = 0.8;
+/** 녹음 한 번에서 가장 큰 음의 세기. 마이크마다 입력 크기가 달라 그대로 쓰면 멜로디가 반주보다 훨씬 작게 들립니다. */
+const PEAK_VELOCITY = 0.9;
 
 export function frequencyToMidi(frequency: number) {
   return 69 + 12 * Math.log2(frequency / 440);
@@ -79,14 +81,23 @@ export function framesToNotes(
     maxGap,
   );
 
-  return notes.map(({ pitch, start, end, volumes }) => ({
-    pitch,
-    start,
-    end,
-    velocity: volumes.length
-      ? Math.min(1, volumes.reduce((a, b) => a + b, 0) / volumes.length)
-      : DEFAULT_VELOCITY,
-  }));
+  // 음마다 음량 평균을 내고, 가장 큰 음이 PEAK_VELOCITY가 되게 모두 같은 비율로 맞춥니다 (음끼리 강약은 그대로).
+  const loudness = notes.map(({ volumes }) =>
+    volumes.length ? volumes.reduce((a, b) => a + b, 0) / volumes.length : null,
+  );
+  const peak = Math.max(0, ...loudness.map((v) => v ?? 0));
+  return notes.map(({ pitch, start, end }, i) => {
+    const v = loudness[i];
+    return {
+      pitch,
+      start,
+      end,
+      velocity:
+        v === null || peak === 0
+          ? DEFAULT_VELOCITY
+          : (v / peak) * PEAK_VELOCITY,
+    };
+  });
 }
 
 type Segment = RawNote & { volumes: number[] };
