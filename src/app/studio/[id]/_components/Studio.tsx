@@ -314,6 +314,19 @@ function usePlayerValue<T extends string | number | boolean>(
 // 재생 위치만 프레임마다 바뀌므로, 위치를 구독하는 부분을 따로 둡니다.
 function TimelineWithPlayhead() {
   const { status, step } = usePlayerState();
+  const studioStep = useSongStore((s) => s.step);
   const showPlayhead = status === "playing" || status === "paused";
-  return <Timeline position={showPlayhead ? step : undefined} />;
+  return (
+    <Timeline
+      position={showPlayhead ? step : undefined}
+      // 멜로디 편집은 ② 보정 단계에서만
+      editable={studioStep === "refine"}
+      onSeek={seekTo}
+    />
+  );
+}
+
+/** 마디 번호 줄을 누르면 그 위치로. 멈춰 있을 때도 다음 재생이 그 위치부터 시작합니다 */
+function seekTo(step: number) {
+  player.seek(step);
 }

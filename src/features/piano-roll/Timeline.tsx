@@ -1,6 +1,6 @@
 "use client";
 
-// 스튜디오 가운데의 고정 타임라인 (보기 전용).
+// 스튜디오 가운데의 고정 타임라인. 보정 단계(editable)에서는 멜로디 줄을 편집합니다(MelodyEditor).
 // 위에서부터 마디 번호, 코드, 멜로디 피아노롤, 드럼 · 베이스 · 건반 · 기타 줄입니다.
 // 색은 globals.css의 timeline · track 토큰을 씁니다 (docs/design/README.md "타임라인" · "트랙 색").
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -9,6 +9,8 @@ import { DRUM } from "@/features/arranger";
 import { stepsPerBar } from "@/lib/transport";
 import { useSongStore } from "@/store/songStore";
 import type { Note, Step } from "@/types/song";
+import { deleteNote } from "./edit";
+import { EditBar, MelodyEditor } from "./MelodyEditor";
 import {
   LABEL_WIDTH,
   fitStepWidth,
@@ -21,10 +23,26 @@ import {
 const MELODY_ROW_HEIGHT = 10;
 const ACCOMPANIMENT_HEIGHT = 48;
 
+/** 편집할 때 멜로디 위아래로 더 보여 줄 반음 수. 이 범위 안에서 음을 옮길 수 있습니다 */
+const EDIT_PITCH_MARGIN = 2;
+
 /**
- * @param position 재생 위치(step). B의 재생 엔진이 연결되기 전까지는 비워 둡니다.
+ * @param position 재생 위치(step). 재생 중 · 일시정지일 때만 넘깁니다.
+ * @param editable 멜로디 줄 편집 (보정 단계에서만 true)
+ * @param grid 편집할 때 맞출 격자(step). 1 = 16분음표
+ * @param onSeek 마디 번호 줄을 누르면 그 위치(step)로
  */
-export function Timeline({ position }: { position?: Step }) {
+export function Timeline({
+  position,
+  editable = false,
+  grid: snapGrid = 1,
+  onSeek,
+}: {
+  position?: Step;
+  editable?: boolean;
+  grid?: Step;
+  onSeek?: (step: Step) => void;
+}) {
   // 제목 · 빠르기 등이 바뀔 때는 다시 그리지 않도록 그리는 데 필요한 값만 구독합니다.
   const song: TimelineSong = useSongStore(
     useShallow((s) => ({
@@ -54,14 +72,24 @@ export function Timeline({ position }: { position?: Step }) {
       stepWidth={stepWidth}
     />
   );
-  const [low, high] = pitchRange(song.melody);
+  const [low, high] = editable
+    ? widen(pitchRange(song.melody, 24), EDIT_PITCH_MARGIN)
+    : pitchRange(song.melody);
   const melodyRows = high - low + 1;
 
-  return (
+  // 선택한 음(멜로디 안 위치). 편집이 꺼지거나 음이 지워져 범위를 벗어나면 선택 없음으로 봅니다.
+  const [selectedIndex, setSelected] = useState<number | null>(null);
+  const selected =
+    editable && selectedIndex !== null && selectedIndex < song.melody.length
+      ? selectedIndex
+      : null;
+  const setMelody = useSongStore((s) => s.setMelody);
+
+  const timeline = (
     <section
       ref={sectionRef}
       aria-label="타임라인"
-      className="h-full overflow-auto rounded-[20px] border-2 border-ink bg-timeline text-timeline-text"
+      className={`overflow-auto rounded-[20px] border-2 border-ink bg-timeline text-timeline-text ${editable ? "min-h-0 flex-1" : "h-full"}`}
     >
       <div
         className="relative"
@@ -71,12 +99,32 @@ export function Timeline({ position }: { position?: Step }) {
           {Array.from({ length: totalSteps / barSteps }, (_, bar) => (
             <span
               key={bar}
-              className="absolute top-1 pl-1 text-xs font-semibold tabular-nums"
+              className="pointer-events-none absolute top-1 pl-1 text-xs font-semibold tabular-nums"
               style={{ left: bar * barSteps * stepWidth }}
             >
               {bar + 1}
             </span>
           ))}
+          {onSeek && (
+            <div
+              data-seek
+              aria-hidden
+              title="여기부터 재생"
+              className="absolute inset-0 cursor-pointer"
+              onPointerDown={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                onSeek(
+                  Math.min(
+                    totalSteps - 1,
+                    Math.max(
+                      0,
+                      Math.floor((e.clientX - rect.left) / stepWidth),
+                    ),
+                  ),
+                );
+              }}
+            />
+          )}
         </Row>
 
         <Row
@@ -113,7 +161,19 @@ export function Timeline({ position }: { position?: Step }) {
           lane="melody"
           empty={song.melody.length === 0}
         >
-          {song.melody.length === 0 ? (
+          {editable ? (
+            <MelodyEditor
+              melody={song.melody}
+              low={low}
+              high={high}
+              rowHeight={MELODY_ROW_HEIGHT}
+              stepWidth={stepWidth}
+              grid={snapGrid}
+              barSteps={barSteps}
+              look={`${MELODY_NOTE.fill} ${MELODY_NOTE.edge}`}
+              selection={{ selected, setSelected }}
+            />
+          ) : song.melody.length === 0 ? (
             <EmptyLane text="① 녹음하면 멜로디가 여기에 나타나요" />
           ) : (
             <Notes
@@ -170,6 +230,26 @@ export function Timeline({ position }: { position?: Step }) {
       </div>
     </section>
   );
+
+  if (!editable) return timeline;
+  return (
+    <div className="flex h-full flex-col gap-2">
+      <EditBar
+        note={selected === null ? null : song.melody[selected]}
+        barSteps={barSteps}
+        onDelete={() => {
+          if (selected === null) return;
+          setMelody(deleteNote(song.melody, selected));
+          setSelected(null);
+        }}
+      />
+      {timeline}
+    </div>
+  );
+}
+
+function widen([low, high]: [number, number], margin: number) {
+  return [Math.max(0, low - margin), Math.min(127, high + margin)] as const;
 }
 
 // 음표 블록: 위 밝은 색 → 아래 진한 색(fill) + 같은 계열 테두리(edge) (docs/design/README.md "트랙 색")
