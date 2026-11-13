@@ -1,4 +1,10 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { useSongStore } from "@/store/songStore";
 import { Studio } from "./Studio";
@@ -101,7 +107,10 @@ describe("재생 바와 헤더", () => {
 
     expect(screen.getByText("0:00 / 0:23")).toBeTruthy();
     expect(screen.getByText("84 BPM, 4/4박자, 8마디")).toBeTruthy();
-    expect(screen.queryByRole("spinbutton")).toBeNull();
+    // 빠르기 입력은 녹음 패널에만 있고 재생 바에는 없다
+    expect(
+      within(screen.getByRole("contentinfo")).queryByRole("spinbutton"),
+    ).toBeNull();
   });
 
   test("게스트는 로그인 안내를, 회원은 마지막 자동 저장 시각을 본다", () => {

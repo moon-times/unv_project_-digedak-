@@ -9,6 +9,7 @@ import { ArrangePanel } from "@/features/arranger/ArrangePanel";
 import { MixerPanel } from "@/features/mixer/MixerPanel";
 import { RefinePanel } from "@/features/piano-roll/RefinePanel";
 import { Timeline } from "@/features/piano-roll/Timeline";
+import { RecordPanel } from "@/features/recorder/RecordPanel";
 import { useAuthUser } from "@/lib/supabase/useAuthUser";
 import { useProjectSync, type SyncPhase } from "./useProjectSync";
 import {
@@ -35,12 +36,10 @@ import {
   StopIcon,
 } from "./icons";
 import { ProgressBar, STEP_LABELS } from "./ProgressBar";
-import { Slot } from "./Slot";
 import { countBars, formatTime, songDurationSeconds } from "@/lib/transport";
 
-// A 패널이 준비되면 Slot 대신 해당 컴포넌트를 넣습니다.
 const PANELS: Record<StudioStep, ReactNode> = {
-  record: <Slot label="녹음 패널 (빠르기 · 카운트인 포함)" owner="A" />,
+  record: <RecordPanel />,
   refine: <RefinePanel />,
   arrange: <ArrangePanel />,
   mix: <MixerPanel />,
