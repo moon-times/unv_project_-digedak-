@@ -55,9 +55,13 @@ describe("loadProject", () => {
     expect(await loadProject(client, "p1")).toEqual({ status: "not-found" });
   });
 
-  it("UUID 형식이 아닌 id도 not-found, 그 밖의 오류는 그대로 던진다", async () => {
+  it("UUID 형식이 아닌 id · 로그인 안 한 요청도 not-found, 그 밖의 오류는 그대로 던진다", async () => {
     const badId = fakeClient({ data: null, error: { code: "22P02" } });
     expect(await loadProject(badId.client, "abc")).toEqual({
+      status: "not-found",
+    });
+    const guest = fakeClient({ data: null, error: { code: "42501" } });
+    expect(await loadProject(guest.client, "p1")).toEqual({
       status: "not-found",
     });
     const network = fakeClient({ data: null, error: { code: "PGRST000" } });
