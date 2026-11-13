@@ -17,6 +17,7 @@ import {
   type RecordingSession,
 } from "./record";
 import { setLatestRecording } from "./latestRecording";
+import { setRecordingPosition } from "./recordingPosition";
 
 // 반주 패널의 빠르기 슬라이더와 같은 범위
 export const BPM_MIN = 60;
@@ -63,11 +64,13 @@ export function RecordPanel() {
       mounted.current = false;
       session.current?.cancel();
       session.current = null;
+      setRecordingPosition(null);
     };
   }, []);
 
   function finish(result: RecordingResult) {
     session.current = null;
+    setRecordingPosition(null);
     if (result.notes.length === 0) {
       setPhase({ kind: "error", code: "silent" });
       return;
@@ -94,8 +97,15 @@ export function RecordPanel() {
         countInBeats: countIn ? COUNT_IN_BEATS : 0,
         bpm: recordBpm,
         onCountIn: (beat) => setPhase({ kind: "count-in", beat }),
-        onStart: () => setPhase({ kind: "recording" }),
-        onFrame: live.push,
+        onStart: () => {
+          setRecordingPosition(0);
+          setPhase({ kind: "recording" });
+        },
+        onFrame: (frame) => {
+          live.push(frame);
+          // 타임라인 주황 재생선. 1 step = 16분음표
+          setRecordingPosition((frame.time * recordBpm) / 15);
+        },
         onAutoStop: finish,
       });
       // 권한을 묻는 사이 다른 단계로 갔으면, 화면에 없는 녹음이 마이크를 켠 채 남지 않게 바로 버립니다.
@@ -107,6 +117,7 @@ export function RecordPanel() {
       if (!countIn) setPhase({ kind: "recording" });
     } catch (error) {
       session.current = null;
+      setRecordingPosition(null);
       if (mounted.current)
         setPhase({ kind: "error", code: toRecorderError(error).code });
     }

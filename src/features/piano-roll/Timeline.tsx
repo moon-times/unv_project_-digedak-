@@ -3,7 +3,13 @@
 // 스튜디오 가운데의 고정 타임라인. 보정 단계(editable)에서는 멜로디 줄을 편집합니다(MelodyEditor).
 // 위에서부터 마디 번호, 코드, 멜로디 피아노롤, 드럼 · 베이스 · 건반 · 기타 줄입니다.
 // 색은 globals.css의 timeline · track 토큰을 씁니다 (docs/design/README.md "타임라인" · "트랙 색").
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import { useShallow } from "zustand/react/shallow";
 import { DRUM } from "@/features/arranger";
 import { stepsPerBar } from "@/lib/transport";
@@ -29,18 +35,21 @@ const ACCOMPANIMENT_HEIGHT = 48;
 const EDIT_PITCH_MARGIN = 2;
 
 /**
- * @param position 재생 위치(step). 재생 중 · 일시정지일 때만 넘깁니다.
+ * @param position 재생 위치(step). 재생 중 · 일시정지 · 녹음 중일 때만 넘깁니다.
+ * @param recording position이 녹음 중 위치면 true. 재생선을 녹음 색(주황)으로 그립니다
  * @param editable 멜로디 줄 편집 (보정 단계에서만 true)
  * @param onSeek 마디 번호 줄을 누르면 그 위치(step)로
  * @param tools 편집 도구 줄에 더 넣을 것 (스튜디오의 [멜로디만 듣기])
  */
 export function Timeline({
   position,
+  recording = false,
   editable = false,
   onSeek,
   tools,
 }: {
   position?: Step;
+  recording?: boolean;
   editable?: boolean;
   onSeek?: (step: Step) => void;
   tools?: ReactNode;
@@ -55,9 +64,22 @@ export function Timeline({
     })),
   );
   const [sectionRef, sectionWidth] = useContentWidth<HTMLElement>();
-  const totalSteps = timelineSteps(song);
-  const stepWidth = fitStepWidth(sectionWidth, totalSteps);
   const barSteps = stepsPerBar(song.timeSignature);
+  // 녹음 중에는 곡의 음보다 길게 부를 수 있으므로, 주황 재생선이 있는 마디까지 타임라인을 늘립니다.
+  const totalSteps = Math.max(
+    timelineSteps(song),
+    recording && position !== undefined
+      ? (Math.floor(position / barSteps) + 1) * barSteps
+      : 0,
+  );
+  const stepWidth = fitStepWidth(sectionWidth, totalSteps);
+  // 늘어난 타임라인이 칸보다 넓어지면(가로 스크롤) 녹음 재생선이 보이도록 따라갑니다.
+  useFollowPlayhead(
+    sectionRef,
+    recording && position !== undefined
+      ? LABEL_WIDTH + position * stepWidth
+      : null,
+  );
   const beatSteps = 16 / song.timeSignature[1];
   const {
     drums = [],
@@ -246,9 +268,9 @@ export function Timeline({
 
         {position !== undefined && (
           <div
-            data-playhead
+            data-playhead={recording ? "recording" : "playing"}
             aria-hidden
-            className="pointer-events-none absolute top-0 bottom-0 w-0.5 bg-timeline-text"
+            className={`pointer-events-none absolute top-0 bottom-0 ${recording ? "z-20 w-[3px] bg-record" : "w-0.5 bg-timeline-text"}`}
             style={{ left: LABEL_WIDTH + position * stepWidth }}
           />
         )}
@@ -550,3 +572,25 @@ function useContentWidth<T extends HTMLElement>() {
   }, []);
   return [ref, width] as const;
 }
+
+/**
+ * x(px, 타임라인 안 좌표)가 보이는 영역 밖으로 나가면 가로 스크롤을 옮깁니다.
+ * 왼쪽 줄 이름 칸(sticky)에 가리지 않게 그만큼 비우고, 오른쪽 끝에 닿기 전에 미리 넘깁니다.
+ */
+function useFollowPlayhead(
+  ref: RefObject<HTMLElement | null>,
+  x: number | null,
+) {
+  useEffect(() => {
+    const element = ref.current;
+    if (!element || x === null) return;
+    const left = element.scrollLeft + LABEL_WIDTH;
+    const right = element.scrollLeft + element.clientWidth;
+    const margin = element.clientWidth * FOLLOW_MARGIN;
+    if (x < left || x > right - margin)
+      element.scrollLeft = Math.max(0, x - LABEL_WIDTH - margin);
+  }, [ref, x]);
+}
+
+/** 재생선이 보이는 폭의 이 비율만큼 오른쪽 끝에 가까워지면 스크롤 */
+const FOLLOW_MARGIN = 0.15;
