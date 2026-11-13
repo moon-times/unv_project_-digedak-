@@ -167,13 +167,19 @@ export async function startRecording({
   // 카운트인: 다음 박부터 countInBeats번 클릭, 그다음 박이 녹음 0초입니다.
   const beat = 60 / bpm;
   const firstClick = context.currentTime + 0.1;
-  const startAt = firstClick + countInBeats * beat;
+  // 사용자는 클릭을 출력 지연(블루투스 이어폰이면 0.1 ~ 0.3초)만큼 늦게 듣고 그 박에 맞춰 부릅니다.
+  // 그래서 녹음 0초도 "클릭이 들리는 시각" 기준으로 그만큼 뒤로 둡니다. 카운트인이 없으면 맞출 박이 없어 그대로.
+  const heardDelay = countInBeats > 0 ? outputLatency(context) : 0;
+  const startAt = firstClick + countInBeats * beat + heardDelay;
   const countInTimers: ReturnType<typeof setTimeout>[] = [];
   for (let i = 0; i < countInBeats; i++) {
     const at = firstClick + i * beat;
     scheduleClick(context, at, i === 0);
     countInTimers.push(
-      setTimeout(() => onCountIn?.(i + 1), (at - context.currentTime) * 1000),
+      setTimeout(
+        () => onCountIn?.(i + 1),
+        (at + heardDelay - context.currentTime) * 1000,
+      ),
     );
   }
 
@@ -265,6 +271,12 @@ function pickMimeType(): MediaRecorderOptions {
     MediaRecorder.isTypeSupported(type),
   );
   return mimeType ? { mimeType } : {};
+}
+
+/** 소리가 실제로 스피커에서 나오기까지 걸리는 시간(초). 모르는 브라우저(Safari 일부)는 0 */
+export function outputLatency(context: Pick<AudioContext, "outputLatency">) {
+  const latency = context.outputLatency;
+  return Number.isFinite(latency) && latency > 0 ? latency : 0;
 }
 
 /** 짧은 메트로놈 클릭. 첫 박은 높게 */

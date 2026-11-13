@@ -53,8 +53,18 @@ export function RecordPanel() {
 
   const busy = phase.kind !== "idle" && phase.kind !== "error";
 
+  // 마이크 권한을 묻는 동안 패널이 사라졌는지 알기 위해 씁니다.
+  const mounted = useRef(false);
+
   // 다른 단계로 가거나 스튜디오를 나가면 녹음을 버리고 마이크를 끕니다.
-  useEffect(() => () => session.current?.cancel(), []);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      session.current?.cancel();
+      session.current = null;
+    };
+  }, []);
 
   function finish(result: RecordingResult) {
     session.current = null;
@@ -79,7 +89,7 @@ export function RecordPanel() {
     if (recordBpm !== bpm) setBpm(recordBpm);
     setPhase({ kind: "opening" });
     try {
-      session.current = await startRecording({
+      const started = await startRecording({
         maxSeconds: MAX_RECORD_SECONDS,
         countInBeats: countIn ? COUNT_IN_BEATS : 0,
         bpm: recordBpm,
@@ -88,10 +98,17 @@ export function RecordPanel() {
         onFrame: live.push,
         onAutoStop: finish,
       });
+      // 권한을 묻는 사이 다른 단계로 갔으면, 화면에 없는 녹음이 마이크를 켠 채 남지 않게 바로 버립니다.
+      if (!mounted.current) {
+        started.cancel();
+        return;
+      }
+      session.current = started;
       if (!countIn) setPhase({ kind: "recording" });
     } catch (error) {
       session.current = null;
-      setPhase({ kind: "error", code: toRecorderError(error).code });
+      if (mounted.current)
+        setPhase({ kind: "error", code: toRecorderError(error).code });
     }
   }
 

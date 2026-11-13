@@ -164,4 +164,26 @@ describe("RecordPanel", () => {
     unmount();
     expect(engine.cancel).toHaveBeenCalled();
   });
+
+  test("권한을 묻는 중 패널이 사라지면, 허용된 뒤 녹음을 바로 취소하고 멜로디를 바꾸지 않는다", async () => {
+    let allow: () => void = () => {};
+    let autoStop: ((r: RecordingResult) => void) | undefined;
+    engine.start.mockImplementation(
+      (opts) =>
+        new Promise((resolve) => {
+          autoStop = opts.onAutoStop;
+          allow = () => resolve({ stop: engine.stop, cancel: engine.cancel });
+        }),
+    );
+    const { unmount } = render(<RecordPanel />);
+    await record();
+    unmount();
+    expect(engine.cancel).not.toHaveBeenCalled();
+
+    await act(async () => allow());
+    expect(engine.cancel).toHaveBeenCalledTimes(1);
+    // 취소된 녹음은 자동 정지가 오지 않지만, 혹시 와도 멜로디는 그대로여야 한다
+    expect(autoStop).toBeDefined();
+    expect(song().melody).toEqual([]);
+  });
 });

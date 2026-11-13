@@ -1,6 +1,24 @@
 import { describe, expect, test } from "vitest";
 import { frequencyToMidi } from "./notes";
-import { RecorderError, toFrame, toRecorderError } from "./record";
+import {
+  outputLatency,
+  RecorderError,
+  toFrame,
+  toRecorderError,
+} from "./record";
+
+describe("outputLatency", () => {
+  test("브라우저가 알려 주는 출력 지연(초)", () => {
+    expect(outputLatency({ outputLatency: 0.2 })).toBe(0.2);
+  });
+  test("모르면(undefined · NaN · 음수) 0", () => {
+    expect(
+      outputLatency({ outputLatency: undefined as unknown as number }),
+    ).toBe(0);
+    expect(outputLatency({ outputLatency: NaN })).toBe(0);
+    expect(outputLatency({ outputLatency: -1 })).toBe(0);
+  });
+});
 
 const SAMPLE_RATE = 44100;
 
