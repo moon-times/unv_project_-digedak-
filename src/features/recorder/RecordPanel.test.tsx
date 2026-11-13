@@ -10,6 +10,10 @@ import { getAvailableSteps, useSongStore } from "@/store/songStore";
 import { getLatestRecording, setLatestRecording } from "./latestRecording";
 import { RecorderError, type RecordingResult } from "./record";
 import { RecordPanel } from "./RecordPanel";
+import {
+  getRecordingPosition,
+  setRecordingPosition,
+} from "./recordingPosition";
 
 // 마이크 · Web Audio는 jsdom에 없으므로 엔진을 가짜로 바꿉니다 (실제 녹음은 브라우저에서 확인).
 const engine = vi.hoisted(() => ({
@@ -41,6 +45,7 @@ const song = () => useSongStore.getState().song;
 beforeEach(() => {
   useSongStore.getState().reset();
   setLatestRecording(null);
+  setRecordingPosition(null);
   vi.clearAllMocks();
   engine.stop.mockResolvedValue(result);
   engine.start.mockImplementation(async (opts) => {
@@ -185,5 +190,42 @@ describe("RecordPanel", () => {
     // 취소된 녹음은 자동 정지가 오지 않지만, 혹시 와도 멜로디는 그대로여야 한다
     expect(autoStop).toBeDefined();
     expect(song().melody).toEqual([]);
+  });
+});
+
+describe("녹음 중 위치 (타임라인 주황 재생선)", () => {
+  test("녹음이 시작되면 0, 프레임마다 step으로 옮기고, 멈추면 null", async () => {
+    let onFrame:
+      ((frame: { time: number; frequency: number | null }) => void) | undefined;
+    engine.start.mockImplementation(async (opts) => {
+      opts.onStart?.();
+      onFrame = opts.onFrame;
+      return { stop: engine.stop, cancel: engine.cancel };
+    });
+    render(<RecordPanel />);
+    await record();
+    expect(getRecordingPosition()).toBe(0);
+    // 100 BPM에서 1 step = 0.15초 → 0.6초는 4 step
+    act(() => onFrame?.({ time: 0.6, frequency: 440 }));
+    expect(getRecordingPosition()).toBe(4);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /녹음 멈추기/ }));
+    });
+    expect(getRecordingPosition()).toBeNull();
+  });
+
+  test("녹음 중 패널이 사라지면 null", async () => {
+    const { unmount } = render(<RecordPanel />);
+    await record();
+    expect(getRecordingPosition()).toBe(0);
+    unmount();
+    expect(getRecordingPosition()).toBeNull();
+  });
+
+  test("마이크를 못 열면 위치를 만들지 않는다", async () => {
+    engine.start.mockRejectedValue(new RecorderError("no-device"));
+    render(<RecordPanel />);
+    await record();
+    expect(getRecordingPosition()).toBeNull();
   });
 });

@@ -10,6 +10,7 @@ import { MixerPanel } from "@/features/mixer/MixerPanel";
 import { RefinePanel } from "@/features/piano-roll/RefinePanel";
 import { Timeline } from "@/features/piano-roll/Timeline";
 import { RecordPanel } from "@/features/recorder/RecordPanel";
+import { useRecordingPosition } from "@/features/recorder/recordingPosition";
 import { useAuthUser } from "@/lib/supabase/useAuthUser";
 import { useProjectSync, type SyncPhase } from "./useProjectSync";
 import {
@@ -315,7 +316,11 @@ function usePlayerValue<T extends string | number | boolean>(
 function TimelineWithPlayhead() {
   const { status, step } = usePlayerState();
   const studioStep = useSongStore((s) => s.step);
+  const recordingStep = useRecordingPosition();
   const showPlayhead = status === "playing" || status === "paused";
+  // 녹음 중이면 녹음 위치를 주황 재생선으로 (녹음 전에 재생을 멈추므로 둘이 겹치지 않음)
+  if (recordingStep !== null)
+    return <Timeline position={recordingStep} recording />;
   return (
     <Timeline
       position={showPlayhead ? step : undefined}

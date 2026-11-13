@@ -80,6 +80,16 @@ describe("Timeline", () => {
     rerender(<Timeline position={16} />);
     const playhead = container.querySelector<HTMLElement>("[data-playhead]");
     expect(playhead?.style.left).toBe(`${LABEL_WIDTH + 16 * STEP_WIDTH}px`);
+    expect(playhead?.dataset.playhead).toBe("playing");
+    expect(playhead?.className).not.toContain("bg-record");
+  });
+
+  test("녹음 중 위치는 주황(녹음 색) 재생선", () => {
+    const { container } = render(<Timeline position={8} recording />);
+    const playhead = container.querySelector<HTMLElement>("[data-playhead]");
+    expect(playhead?.dataset.playhead).toBe("recording");
+    expect(playhead?.className).toContain("bg-record");
+    expect(playhead?.style.left).toBe(`${LABEL_WIDTH + 8 * STEP_WIDTH}px`);
   });
 
   test("음표가 낮게 그려지는 줄은 테두리를 빼서 색이 보이게 한다", () => {

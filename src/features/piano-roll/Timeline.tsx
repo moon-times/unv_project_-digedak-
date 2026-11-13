@@ -27,18 +27,21 @@ const ACCOMPANIMENT_HEIGHT = 48;
 const EDIT_PITCH_MARGIN = 2;
 
 /**
- * @param position 재생 위치(step). 재생 중 · 일시정지일 때만 넘깁니다.
+ * @param position 재생 위치(step). 재생 중 · 일시정지 · 녹음 중일 때만 넘깁니다.
+ * @param recording position이 녹음 중 위치면 true. 재생선을 녹음 색(주황)으로 그립니다
  * @param editable 멜로디 줄 편집 (보정 단계에서만 true)
  * @param grid 편집할 때 맞출 격자(step). 1 = 16분음표
  * @param onSeek 마디 번호 줄을 누르면 그 위치(step)로
  */
 export function Timeline({
   position,
+  recording = false,
   editable = false,
   grid: snapGrid = 1,
   onSeek,
 }: {
   position?: Step;
+  recording?: boolean;
   editable?: boolean;
   grid?: Step;
   onSeek?: (step: Step) => void;
@@ -221,9 +224,9 @@ export function Timeline({
 
         {position !== undefined && (
           <div
-            data-playhead
+            data-playhead={recording ? "recording" : "playing"}
             aria-hidden
-            className="pointer-events-none absolute top-0 bottom-0 w-0.5 bg-timeline-text"
+            className={`pointer-events-none absolute top-0 bottom-0 ${recording ? "z-20 w-[3px] bg-record" : "w-0.5 bg-timeline-text"}`}
             style={{ left: LABEL_WIDTH + position * stepWidth }}
           />
         )}
