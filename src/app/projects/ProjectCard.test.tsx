@@ -28,7 +28,6 @@ describe("ProjectCard", () => {
     key: "C major",
     style: "ballad",
     bpm: 84,
-    recordingPath: null,
   };
 
   it("제목은 스튜디오 링크, 키 · 장르 · BPM은 태그로 보여 준다", () => {

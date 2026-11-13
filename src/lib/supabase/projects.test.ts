@@ -100,7 +100,6 @@ describe("listProjects", () => {
           key: "C major",
           style: "pop",
           bpm: 100,
-          recording: null,
         },
         {
           id: "p2",
@@ -109,7 +108,6 @@ describe("listProjects", () => {
           key: 3,
           style: null,
           bpm: "빠름",
-          recording: "user-1/p2.webm",
         },
       ],
       error: null,
@@ -122,11 +120,7 @@ describe("listProjects", () => {
     // count를 안 주면 받은 개수
     expect(total).toBe(2);
     expect(first).toMatchObject({ key: "C major", style: "pop", bpm: 100 });
-    expect(second).toMatchObject({
-      key: null,
-      bpm: null,
-      recordingPath: "user-1/p2.webm",
-    });
+    expect(second).toMatchObject({ key: null, bpm: null });
   });
 
   it("최근 수정 순 50개만 읽고 전체 개수를 함께 돌려준다", async () => {
@@ -144,19 +138,22 @@ describe("listProjects", () => {
 });
 
 describe("deleteProject", () => {
-  it("내 폴더의 녹음 파일만 지운다", async () => {
-    const mine = fakeClient({ data: [{ id: "p1" }], error: null });
-    await deleteProject(mine.client, "p1", "user-1/p1.webm");
-    expect(mine.remove).toHaveBeenCalledWith(["user-1/p1.webm"]);
-
-    const other = fakeClient({ data: [{ id: "p1" }], error: null });
-    await deleteProject(other.client, "p1", "someone-else/p1.webm");
-    expect(other.remove).not.toHaveBeenCalled();
+  it("곡에 경로가 없어도 내 폴더의 그 곡 녹음을 확장자마다 지운다", async () => {
+    const { client, remove } = fakeClient({
+      data: [{ id: "p1" }],
+      error: null,
+    });
+    await deleteProject(client, "p1");
+    expect(remove).toHaveBeenCalledWith([
+      "user-1/p1.webm",
+      "user-1/p1.ogg",
+      "user-1/p1.m4a",
+    ]);
   });
 
   it("행을 지우지 못하면 녹음 파일은 건드리지 않는다", async () => {
     const { client, remove } = fakeClient({ data: [], error: null });
-    await expect(deleteProject(client, "p1", "user-1/p1.webm")).rejects.toThrow(
+    await expect(deleteProject(client, "p1")).rejects.toThrow(
       "project-not-found",
     );
     expect(remove).not.toHaveBeenCalled();

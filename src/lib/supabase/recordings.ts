@@ -4,7 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
 
 /** 녹음 패널(A)의 pickMimeType이 고르는 형식 → 파일 확장자 */
-const EXTENSIONS: Record<string, string> = {
+export const RECORDING_EXTENSIONS: Record<string, string> = {
   "audio/webm": "webm",
   "audio/ogg": "ogg",
   "audio/mp4": "m4a",
@@ -24,7 +24,7 @@ export async function uploadRecording(
   if (!uid) throw new Error("not-signed-in");
   // Chrome은 "audio/webm;codecs=opus"처럼 주는데, 버킷 허용 목록은 기본 형식만 적혀 있습니다.
   const type = blob.type.split(";")[0] || "audio/webm";
-  const path = `${uid}/${projectId}.${EXTENSIONS[type] ?? "webm"}`;
+  const path = `${uid}/${projectId}.${RECORDING_EXTENSIONS[type] ?? "webm"}`;
   const { error } = await supabase.storage
     .from("recordings")
     .upload(path, blob, { contentType: type, upsert: true });
