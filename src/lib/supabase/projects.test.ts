@@ -2,13 +2,17 @@ import { describe, expect, it, vi } from "vitest";
 import { createEmptySong } from "@/types/song";
 import {
   deleteProject,
+  LIST_LIMIT,
   listProjects,
   loadProject,
   saveProject,
 } from "./projects";
 
 /** supabase-js 쿼리 빌더 흉내: 어떤 메서드를 이어 불러도 마지막에 result로 끝납니다. */
-function fakeClient(result: { data: unknown; error: unknown }, uid = "user-1") {
+function fakeClient(
+  result: { data: unknown; error: unknown; count?: number },
+  uid = "user-1",
+) {
   const query: Record<string, unknown> = {};
   for (const name of [
     "insert",
@@ -17,6 +21,7 @@ function fakeClient(result: { data: unknown; error: unknown }, uid = "user-1") {
     "select",
     "eq",
     "order",
+    "limit",
     "single",
     "maybeSingle",
   ]) {
@@ -109,15 +114,32 @@ describe("listProjects", () => {
       ],
       error: null,
     });
-    const [first, second] = await listProjects(client, "user-1");
-    // 남의 공개 곡이 섞이지 않도록 내 것만
+    const {
+      projects: [first, second],
+      total,
+    } = await listProjects(client, "user-1");
     expect(query.eq).toHaveBeenCalledWith("user_id", "user-1");
+    // count를 안 주면 받은 개수
+    expect(total).toBe(2);
     expect(first).toMatchObject({ key: "C major", style: "pop", bpm: 100 });
     expect(second).toMatchObject({
       key: null,
       bpm: null,
       recordingPath: "user-1/p2.webm",
     });
+  });
+
+  it("최근 수정 순 50개만 읽고 전체 개수를 함께 돌려준다", async () => {
+    const { client, query } = fakeClient({ data: [], error: null, count: 73 });
+    const { total } = await listProjects(client, "user-1");
+    expect(query.select).toHaveBeenCalledWith(expect.any(String), {
+      count: "exact",
+    });
+    expect(query.order).toHaveBeenCalledWith("updated_at", {
+      ascending: false,
+    });
+    expect(query.limit).toHaveBeenCalledWith(LIST_LIMIT);
+    expect(total).toBe(73);
   });
 });
 

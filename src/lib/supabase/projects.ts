@@ -77,23 +77,28 @@ export type ProjectSummary = {
   recordingPath: string | null;
 };
 
+/** 목록에 보이는 최대 개수. 행마다 곡 JSON을 풀어 읽으므로 많아지면 느려집니다. */
+export const LIST_LIMIT = 50;
+
 /**
- * 내 프로젝트를 최근 수정 순으로. 곡 전체 JSON 대신 카드에 필요한 값만 읽습니다.
- * RLS는 남의 공개(is_public) 곡도 읽게 하므로 user_id로 직접 거릅니다.
+ * 내 프로젝트를 최근 수정 순으로 최대 LIST_LIMIT개와 전체 개수. 곡 전체 JSON 대신 카드에 필요한 값만 읽습니다.
+ * RLS도 본인 행만 주지만, 의도를 분명히 하려고 user_id로 직접 거릅니다.
  */
 export async function listProjects(
   supabase: Client,
   userId: string,
-): Promise<ProjectSummary[]> {
-  const { data, error } = await supabase
+): Promise<{ projects: ProjectSummary[]; total: number }> {
+  const { data, error, count } = await supabase
     .from("projects")
     .select(
       "id, title, updated_at, key:song->>key, style:song->>style, bpm:song->bpm, recording:song->recording->>path",
+      { count: "exact" },
     )
     .eq("user_id", userId)
-    .order("updated_at", { ascending: false });
+    .order("updated_at", { ascending: false })
+    .limit(LIST_LIMIT);
   if (error) throw error;
-  return data.map((row) => ({
+  const projects = data.map((row) => ({
     id: row.id,
     title: row.title,
     updatedAt: row.updated_at,
@@ -102,6 +107,7 @@ export async function listProjects(
     bpm: typeof row.bpm === "number" ? row.bpm : null,
     recordingPath: typeof row.recording === "string" ? row.recording : null,
   }));
+  return { projects, total: count ?? projects.length };
 }
 
 /**
