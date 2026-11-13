@@ -10,6 +10,8 @@ type Client = SupabaseClient<Database>;
 
 /** Postgres invalid_text_representation (잘못된 uuid 문자열 등) */
 const INVALID_UUID = "22P02";
+/** Postgres insufficient_privilege. 로그인하지 않으면(anon) projects 권한이 없어 이 오류가 납니다. */
+const NO_PRIVILEGE = "42501";
 
 // SongState는 JSON으로 그대로 저장되는 순수 데이터라 jsonb 타입으로 바꿔 넣습니다.
 const toJson = (song: SongState) => song as unknown as Json;
@@ -58,8 +60,10 @@ export async function loadProject(
     .select("song")
     .eq("id", id)
     .maybeSingle();
-  // 주소의 id가 UUID 형식이 아니면(/studio/abc) Postgres가 22P02 오류를 냅니다. 없는 프로젝트와 같게 봅니다.
-  if (error?.code === INVALID_UUID) return { status: "not-found" };
+  // 주소의 id가 UUID 형식이 아니거나(/studio/abc, 22P02) 로그인하지 않았으면(42501)
+  // 없는 프로젝트와 같게 봅니다. 남의 프로젝트도 RLS 때문에 0행이라 not-found입니다.
+  if (error?.code === INVALID_UUID || error?.code === NO_PRIVILEGE)
+    return { status: "not-found" };
   if (error) throw error;
   if (!data) return { status: "not-found" };
   const parsed = SongStateSchema.safeParse(data.song);

@@ -5,6 +5,7 @@ import {
   getAvailableSteps,
   GUEST_DRAFT_KEY,
   guestDraft,
+  TITLE_MAX_LENGTH,
   useSongStore,
 } from "./songStore";
 
@@ -119,5 +120,12 @@ describe("게스트 보관 (localStorage)", () => {
       dirty: true,
       projectId: null,
     });
+  });
+});
+
+describe("곡 제목 길이", () => {
+  test("DB 제약(100자)을 넘는 제목은 잘라서 저장", () => {
+    useSongStore.getState().setTitle("가".repeat(150));
+    expect(useSongStore.getState().song.title).toHaveLength(TITLE_MAX_LENGTH);
   });
 });

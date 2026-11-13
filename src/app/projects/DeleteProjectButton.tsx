@@ -35,7 +35,11 @@ export function DeleteProjectButton({
     <>
       <button
         type="button"
-        onClick={() => dialog.current?.showModal()}
+        onClick={() => {
+          // 지난번 실패 문구가 시도 전부터 보이지 않게 열 때마다 지웁니다.
+          setFailed(false);
+          dialog.current?.showModal();
+        }}
         className="rounded-lg px-3 py-2 text-left text-danger hover:bg-ink/10"
       >
         삭제

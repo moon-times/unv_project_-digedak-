@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import mascot from "@/app/icon.png";
-import { useSyncExternalStore, type ReactNode } from "react";
+import { useState, useSyncExternalStore, type ReactNode } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { ArrangePanel } from "@/features/arranger/ArrangePanel";
 import { MixerPanel } from "@/features/mixer/MixerPanel";
@@ -13,6 +13,7 @@ import { Timeline } from "@/features/piano-roll/Timeline";
 import { RecordPanel } from "@/features/recorder/RecordPanel";
 import { useRecordingPosition } from "@/features/recorder/recordingPosition";
 import { useAuthUser } from "@/lib/supabase/useAuthUser";
+import { ExportDialog } from "./ExportDialog";
 import { useProjectSync, type SyncPhase } from "./useProjectSync";
 import { useRecordingUpload } from "./useRecordingUpload";
 import {
@@ -26,6 +27,7 @@ import {
 import {
   getAvailableSteps,
   STUDIO_STEPS,
+  TITLE_MAX_LENGTH,
   useSongStore,
   type SaveStatus,
   type StudioStep,
@@ -75,13 +77,16 @@ export function Studio({ projectId }: { projectId: string | null }) {
   // song 전체를 구독하면 제목 한 글자마다 타임라인까지 다시 그려지므로, 열린 단계 목록만 구독합니다.
   const available = useSongStore(useShallow((s) => getAvailableSteps(s.song)));
   const setStep = useSongStore((s) => s.setStep);
+  const [exportOpen, setExportOpen] = useState(false);
+  // 로그인 확인 중에는 회원 · 게스트 팝업을 고를 수 없어 열지 않습니다.
+  const openExport = () => auth !== "loading" && setExportOpen(true);
 
   // 불러오기가 끝나기 전에는 편집할 수 없게 스튜디오 대신 안내만 보여 줍니다.
   if (phase !== "ready") return <SyncMessage phase={phase} />;
 
   return (
     <div className="flex h-dvh flex-col">
-      <StudioHeader auth={auth} />
+      <StudioHeader auth={auth} onExport={openExport} />
       <ProgressBar current={step} available={available} onSelect={setStep} />
 
       <div className="flex min-h-0 flex-1">
@@ -98,11 +103,21 @@ export function Studio({ projectId }: { projectId: string | null }) {
             </p>
           </div>
           <div className="min-h-0 flex-1">{PANELS[step]}</div>
-          <NextStepButton step={step} available={available} onNext={setStep} />
+          <NextStepButton
+            step={step}
+            available={available}
+            onNext={setStep}
+            onExport={openExport}
+          />
         </aside>
       </div>
 
       <TransportBar />
+      <ExportDialog
+        member={auth === "member"}
+        open={exportOpen}
+        onClose={() => setExportOpen(false)}
+      />
     </div>
   );
 }
@@ -137,20 +152,22 @@ function NextStepButton({
   step,
   available,
   onNext,
+  onExport,
 }: {
   step: StudioStep;
   available: StudioStep[];
   onNext: (step: StudioStep) => void;
+  onExport: () => void;
 }) {
   const next = STUDIO_STEPS[STUDIO_STEPS.indexOf(step) + 1];
-  // TODO(C §3): 믹싱 단계에서는 내보내기 팝업 열기
-  const disabled = next ? !available.includes(next) : true;
+  // 마지막 단계(믹싱)는 다음 단계 대신 내보내기 팝업을 엽니다.
+  const disabled = next ? !available.includes(next) : false;
 
   return (
     <button
       type="button"
       disabled={disabled}
-      onClick={() => next && onNext(next)}
+      onClick={() => (next ? onNext(next) : onExport())}
       className="flex min-h-[52px] w-full items-center justify-center gap-2 rounded-full border-2 border-ink bg-primary px-5 text-[17px] font-bold text-on-primary shadow-[0_4px_0_var(--color-ink)] disabled:opacity-40 disabled:shadow-none"
     >
       {step === "mix" && <DownloadIcon size={18} />}
@@ -161,7 +178,13 @@ function NextStepButton({
 
 type Auth = "loading" | "guest" | "member";
 
-function StudioHeader({ auth }: { auth: Auth }) {
+function StudioHeader({
+  auth,
+  onExport,
+}: {
+  auth: Auth;
+  onExport: () => void;
+}) {
   const isGuest = auth === "guest";
   // 새 곡이 처음 저장되면 주소가 /studio/{id}로 바뀌므로 store의 id를 씁니다.
   const projectId = useSongStore((s) => s.projectId);
@@ -170,6 +193,10 @@ function StudioHeader({ auth }: { auth: Auth }) {
   const saveStatus = useSongStore((s) => s.saveStatus);
   const dirty = useSongStore((s) => s.dirty);
   const lastSavedAt = useSongStore((s) => s.lastSavedAt);
+  // 멜로디만 있어도 내보낼 수 있습니다 (명세 04 E1). 로그인 확인 중에는 회원 · 게스트 팝업을 고를 수 없어 막습니다.
+  const canExport = useSongStore(
+    (s) => auth !== "loading" && s.song.melody.length > 0,
+  );
 
   return (
     <header className="flex h-[66px] shrink-0 items-center gap-3.5 border-b-2 border-ink bg-surface px-5">
@@ -192,6 +219,7 @@ function StudioHeader({ auth }: { auth: Auth }) {
       <div className="flex min-w-0 flex-1 flex-col">
         <input
           value={title}
+          maxLength={TITLE_MAX_LENGTH}
           onChange={(e) => setTitle(e.target.value)}
           aria-label="곡 제목"
           className="min-w-0 bg-transparent font-display text-[22px] leading-tight outline-none"
@@ -211,10 +239,10 @@ function StudioHeader({ auth }: { auth: Auth }) {
           로그인
         </Link>
       )}
-      {/* TODO(C §3): 내보내기 팝업 (회원: WAV · 저장 / 게스트: 로그인 안내) */}
       <button
         type="button"
-        disabled
+        disabled={!canExport}
+        onClick={onExport}
         className="flex min-h-11 items-center gap-2 rounded-full border-2 border-ink bg-primary px-5 text-[15px] font-bold text-on-primary shadow-[0_3px_0_var(--color-ink)] disabled:opacity-40 disabled:shadow-none"
       >
         <DownloadIcon size={18} />

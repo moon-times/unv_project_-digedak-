@@ -35,6 +35,9 @@ export function getAvailableSteps(song: SongState): StudioStep[] {
   return steps;
 }
 
+/** 곡 제목 최대 길이. DB projects_title_length 제약과 같은 값 */
+export const TITLE_MAX_LENGTH = 100;
+
 type SongStore = {
   song: SongState;
   /** 지금 곡이 연결된 프로젝트. null이면 아직 저장 전(게스트이거나 새 곡의 첫 변경 전) */
@@ -104,7 +107,8 @@ export const useSongStore = create<SongStore>()(
       return {
         ...initialState(),
 
-        setTitle: (title) => updateSong({ title }),
+        setTitle: (title) =>
+          updateSong({ title: title.slice(0, TITLE_MAX_LENGTH) }),
         setBpm: (bpm) => updateSong({ bpm }),
         setKey: (key) => updateSong({ key }),
         setStyle: (style) => updateSong({ style }),
