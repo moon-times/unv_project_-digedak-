@@ -78,6 +78,6 @@ describe("Timeline", () => {
 
     rerender(<Timeline position={16} />);
     const playhead = container.querySelector<HTMLElement>("[data-playhead]");
-    expect(playhead?.style.left).toBe(`${64 + 16 * 12}px`);
+    expect(playhead?.style.left).toBe(`${76 + 16 * 12}px`);
   });
 });

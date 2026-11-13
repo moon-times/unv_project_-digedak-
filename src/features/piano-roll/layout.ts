@@ -9,7 +9,7 @@ export type TimelineSong = Pick<
 >;
 
 /** 왼쪽 줄 이름 칸 폭(px) */
-export const LABEL_WIDTH = 64;
+export const LABEL_WIDTH = 76;
 /** 1 step(16분음표)의 가로 폭(px). 타임라인 칸 폭을 재기 전(첫 화면, 테스트)에 씁니다 */
 export const STEP_WIDTH = 12;
 /** 칸 폭에 맞춰 줄일 때의 최소 step 폭(px). 이보다 좁아지면 가로 스크롤 */

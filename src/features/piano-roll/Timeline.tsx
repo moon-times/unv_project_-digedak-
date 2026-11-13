@@ -1,10 +1,11 @@
 "use client";
 
 // 스튜디오 가운데의 고정 타임라인 (보기 전용).
-// 위에서부터 마디 번호, 코드, 멜로디 피아노롤, 드럼 · 베이스 · 건반 줄입니다.
-// 색은 공통 디자인 토큰이 생기기 전까지 기본 색(foreground)의 농도로만 구분합니다 (docs/design/README.md).
+// 위에서부터 마디 번호, 코드, 멜로디 피아노롤, 드럼 · 베이스 · 건반 · 기타 줄입니다.
+// 색은 globals.css의 timeline · track 토큰을 씁니다 (docs/design/README.md "타임라인" · "트랙 색").
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useShallow } from "zustand/react/shallow";
+import { DRUM } from "@/features/arranger";
 import { stepsPerBar } from "@/lib/transport";
 import { useSongStore } from "@/store/songStore";
 import type { Note, Step } from "@/types/song";
@@ -60,17 +61,17 @@ export function Timeline({ position }: { position?: Step }) {
     <section
       ref={sectionRef}
       aria-label="타임라인"
-      className="h-full overflow-auto rounded-lg border-2 border-foreground/15"
+      className="h-full overflow-auto rounded-[20px] border-2 border-ink bg-timeline text-timeline-text"
     >
       <div
         className="relative"
         style={{ width: LABEL_WIDTH + totalSteps * stepWidth }}
       >
-        <Row label="마디" height={24} grid={grid}>
+        <Row label="마디" height={24} grid={grid} ruler>
           {Array.from({ length: totalSteps / barSteps }, (_, bar) => (
             <span
               key={bar}
-              className="absolute top-1 pl-1 text-xs tabular-nums opacity-60"
+              className="absolute top-1 pl-1 text-xs font-semibold tabular-nums"
               style={{ left: bar * barSteps * stepWidth }}
             >
               {bar + 1}
@@ -78,7 +79,14 @@ export function Timeline({ position }: { position?: Step }) {
           ))}
         </Row>
 
-        <Row label="코드" height={32} grid={grid} lane="chords">
+        <Row
+          label="코드"
+          dot="bg-track-chord-from"
+          height={32}
+          grid={grid}
+          lane="chords"
+          empty={song.chords.length === 0}
+        >
           {song.chords.length === 0 ? (
             <EmptyLane text="② 분석하면 마디마다 코드가 붙어요" />
           ) : (
@@ -86,7 +94,7 @@ export function Timeline({ position }: { position?: Step }) {
               <div
                 key={chord.start}
                 data-chord
-                className="absolute top-1 bottom-1 truncate rounded-sm border border-foreground/40 bg-foreground/10 px-1 text-xs leading-[22px] font-semibold"
+                className="absolute top-1 bottom-1 truncate rounded-[3px] border border-ink bg-linear-to-b from-track-chord-from to-track-chord-to px-1 text-xs leading-[22px] font-semibold text-ink"
                 style={{
                   left: chord.start * stepWidth,
                   width: chord.duration * stepWidth,
@@ -103,6 +111,7 @@ export function Timeline({ position }: { position?: Step }) {
           height={melodyRows * MELODY_ROW_HEIGHT}
           grid={grid}
           lane="melody"
+          empty={song.melody.length === 0}
         >
           {song.melody.length === 0 ? (
             <EmptyLane text="① 녹음하면 멜로디가 여기에 나타나요" />
@@ -113,7 +122,7 @@ export function Timeline({ position }: { position?: Step }) {
               high={high}
               height={melodyRows * MELODY_ROW_HEIGHT}
               stepWidth={stepWidth}
-              className="bg-foreground/70"
+              className={MELODY_NOTE}
               titled
             />
           )}
@@ -121,18 +130,20 @@ export function Timeline({ position }: { position?: Step }) {
 
         {(
           [
-            ["드럼", "drums", drums],
-            ["베이스", "bass", bass],
-            ["건반", "keys", keys],
-            ["기타", "guitar", guitar],
+            ["드럼", "drums", drums, "bg-track-drum", drumNoteClass],
+            ["베이스", "bass", bass, "bg-track-bass-to", BASS_NOTE],
+            ["건반", "keys", keys, "bg-track-keys-to", KEYS_NOTE],
+            ["기타", "guitar", guitar, "bg-track-guitar-to", GUITAR_NOTE],
           ] as const
-        ).map(([label, lane, notes]) => (
+        ).map(([label, lane, notes, dot, noteClass]) => (
           <Row
             key={lane}
             label={label}
+            dot={dot}
             height={ACCOMPANIMENT_HEIGHT}
             grid={grid}
             lane={lane}
+            empty={notes.length === 0}
           >
             {notes.length === 0 ? (
               <EmptyLane text="③ 반주 단계에서 채워져요" />
@@ -142,7 +153,7 @@ export function Timeline({ position }: { position?: Step }) {
                 {...rangeOf(notes)}
                 height={ACCOMPANIMENT_HEIGHT}
                 stepWidth={stepWidth}
-                className="bg-foreground/45"
+                className={noteClass}
               />
             )}
           </Row>
@@ -152,7 +163,7 @@ export function Timeline({ position }: { position?: Step }) {
           <div
             data-playhead
             aria-hidden
-            className="pointer-events-none absolute top-0 bottom-0 w-0.5 bg-foreground"
+            className="pointer-events-none absolute top-0 bottom-0 w-0.5 bg-timeline-text"
             style={{ left: LABEL_WIDTH + position * stepWidth }}
           />
         )}
@@ -161,37 +172,89 @@ export function Timeline({ position }: { position?: Step }) {
   );
 }
 
+// 음표 블록: 위 밝은 색 → 아래 진한 색 + 같은 계열 테두리 (docs/design/README.md "트랙 색")
+const MELODY_NOTE =
+  "border border-track-melody-border bg-linear-to-b from-track-melody-from to-track-melody-to";
+const BASS_NOTE =
+  "border border-track-bass-border bg-linear-to-b from-track-bass-from to-track-bass-to";
+const KEYS_NOTE =
+  "border border-track-keys-border bg-linear-to-b from-track-keys-from to-track-keys-to";
+const GUITAR_NOTE =
+  "border border-track-guitar-border bg-linear-to-b from-track-guitar-from to-track-guitar-to";
+
+/** 드럼은 악기별 색: 킥 진하게, 하이햇 · 크래시 밝게, 나머지(스네어 등) 기본 */
+function drumNoteClass(note: Note) {
+  if (note.pitch === DRUM.kick) return "bg-track-drum-low";
+  if (
+    note.pitch === DRUM.closedHat ||
+    note.pitch === DRUM.openHat ||
+    note.pitch === DRUM.crash
+  )
+    return "bg-track-drum-high";
+  return "bg-track-drum";
+}
+
 function rangeOf(notes: Note[]) {
   const [low, high] = pitchRange(notes, 1);
   return { low, high };
 }
 
+/** 트랙 이름 앞 색 점 */
+function Dot({ className }: { className: string }) {
+  return (
+    <span
+      aria-hidden
+      className={`inline-block size-2.5 shrink-0 rounded-[3px] ${className}`}
+    />
+  );
+}
+
 function Row({
   label,
+  dot,
   height,
   grid,
   lane,
+  ruler = false,
+  empty = false,
   children,
 }: {
   label: ReactNode;
+  dot?: string;
   height: number;
   grid: ReactNode;
   lane?: string;
+  /** 맨 위 마디 번호 줄 (그라데이션 바탕) */
+  ruler?: boolean;
+  /** 아직 음표가 없는 줄 (밝은 바탕 + 안내 문구) */
+  empty?: boolean;
   children: ReactNode;
 }) {
+  const ground = ruler
+    ? "bg-linear-to-b from-timeline-ruler-from to-timeline-ruler-to"
+    : "bg-timeline";
   return (
-    <div className="flex border-b border-foreground/10" style={{ height }}>
+    <div
+      className={`flex border-b border-timeline-grid ${ruler ? ground : ""}`}
+      style={{ height }}
+    >
       <div
-        className="sticky left-0 z-10 shrink-0 border-r border-foreground/15 bg-background px-2 text-xs font-semibold"
+        className={`sticky left-0 z-10 shrink-0 border-r border-timeline-grid px-2 text-xs font-semibold ${ground}`}
         style={{ width: LABEL_WIDTH }}
       >
         {typeof label === "string" ? (
-          <span className="leading-8">{label}</span>
+          <span className="flex items-center gap-1.5 leading-8 whitespace-nowrap">
+            {dot && <Dot className={dot} />}
+            {label}
+          </span>
         ) : (
           label
         )}
       </div>
-      <div data-lane={lane} className="relative flex-1">
+      <div
+        data-lane={lane}
+        className={`relative flex-1 ${empty ? "bg-timeline-row" : ""}`}
+      >
         {grid}
         {children}
       </div>
@@ -217,7 +280,7 @@ function Grid({
       <div
         key={beat}
         aria-hidden
-        className={`absolute top-0 bottom-0 border-l ${step % barSteps === 0 ? "border-foreground/20" : "border-foreground/5"}`}
+        className={`absolute top-0 bottom-0 border-l ${step % barSteps === 0 ? "border-timeline-text/20" : "border-timeline-grid"}`}
         style={{ left: step * stepWidth }}
       />
     );
@@ -238,17 +301,18 @@ function Notes({
   high: number;
   height: number;
   stepWidth: number;
-  className: string;
+  className: string | ((note: Note) => string);
   titled?: boolean;
 }) {
   const rowHeight = height / (high - low + 1);
+  const classOf = typeof className === "string" ? () => className : className;
   return notes.map((note) => (
     <div
       // 순서가 아니라 위치 · 높이로 구분해야 편집(삭제 · 이동) 때 다른 음표 요소가 재사용되지 않습니다
       key={`${note.start}:${note.pitch}`}
       data-note
       title={titled ? noteName(note.pitch) : undefined}
-      className={`absolute rounded-[2px] ${className}`}
+      className={`absolute rounded-[2px] ${classOf(note)}`}
       style={{
         left: note.start * stepWidth,
         width: note.duration * stepWidth - 1,
@@ -265,10 +329,12 @@ function PitchLabels({ low, high }: { low: number; high: number }) {
   const labels = [];
   for (let pitch = low; pitch <= high; pitch++) {
     if (pitch % 12 !== 0) continue;
+    // 맨 위 "멜로디" 이름(leading-8 = 32px)과 겹치는 높이는 건너뜁니다.
+    if ((high - pitch) * MELODY_ROW_HEIGHT < 32) continue;
     labels.push(
       <span
         key={pitch}
-        className="absolute right-2 text-[10px] leading-none font-bold opacity-60"
+        className="absolute right-2 text-[10px] leading-none font-bold text-timeline-text/60"
         style={{ top: (high - pitch) * MELODY_ROW_HEIGHT }}
       >
         {noteName(pitch)}
@@ -277,7 +343,10 @@ function PitchLabels({ low, high }: { low: number; high: number }) {
   }
   return (
     <div className="relative h-full">
-      <span className="leading-8">멜로디</span>
+      <span className="flex items-center gap-1.5 leading-8 whitespace-nowrap">
+        <Dot className="bg-track-melody-to" />
+        멜로디
+      </span>
       {labels}
     </div>
   );
@@ -285,7 +354,7 @@ function PitchLabels({ low, high }: { low: number; high: number }) {
 
 function EmptyLane({ text }: { text: string }) {
   return (
-    <span className="sticky left-2 flex h-full w-fit items-center text-xs opacity-50">
+    <span className="sticky left-2 flex h-full w-fit items-center text-xs text-timeline-text/70">
       {text}
     </span>
   );

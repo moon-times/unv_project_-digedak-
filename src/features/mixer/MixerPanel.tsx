@@ -19,14 +19,13 @@ export const TRACK_LABELS: Record<TrackId, string> = {
   guitar: "기타",
 };
 
-// docs/design/README.md "트랙 색"의 믹서 점
+// docs/design/README.md "트랙 색"의 믹서 점. 타임라인과 같은 globals.css 토큰
 const TRACK_DOT_COLORS: Record<TrackId, string> = {
-  melody: "#7FD06F",
-  drums: "#E99A3C",
-  bass: "#4FB3A0",
-  keys: "#EE9DA8",
-  // 목업에 없는 트랙이라 다른 트랙 색과 겹치지 않는 하늘색을 골랐습니다.
-  guitar: "#8FB8E8",
+  melody: "var(--color-track-melody-to)",
+  drums: "var(--color-track-drum)",
+  bass: "var(--color-track-bass-to)",
+  keys: "var(--color-track-keys-to)",
+  guitar: "var(--color-track-guitar-to)",
 };
 
 /** "+3 dB", "0 dB", "−6 dB" */
