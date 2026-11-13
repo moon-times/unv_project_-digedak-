@@ -84,6 +84,34 @@ describe("Timeline", () => {
     expect(playhead?.className).not.toContain("bg-record");
   });
 
+  test("녹음 위치가 8마디를 넘으면 타임라인이 그 마디까지 늘어난다", () => {
+    // 마디 번호 줄의 마지막 번호
+    const lastBar = () => {
+      const numbers = screen
+        .getAllByText(/^\d+$/)
+        .map((el) => Number(el.textContent));
+      return Math.max(...numbers);
+    };
+    // 빈 곡은 최소 8마디(128 step)
+    const { rerender } = render(<Timeline position={100} recording />);
+    expect(lastBar()).toBe(8);
+    // 10마디째(146 step)를 녹음 중 → 10마디까지
+    rerender(<Timeline position={146} recording />);
+    expect(lastBar()).toBe(10);
+    // 재생 중 위치는 타임라인 길이를 바꾸지 않는다
+    rerender(<Timeline position={146} />);
+    expect(lastBar()).toBe(8);
+  });
+
+  test("녹음 재생선이 보이는 영역 오른쪽 끝에 가까워지면 가로 스크롤이 따라간다", () => {
+    const { container, rerender } = render(<Timeline position={0} recording />);
+    const section = container.querySelector("section")!;
+    Object.defineProperty(section, "clientWidth", { value: 400 });
+    // 재생선 x = 76 + 40 × 12 = 556px > 400 - 60 → 왼쪽 이름 칸과 여유만큼 남기고 스크롤
+    rerender(<Timeline position={40} recording />);
+    expect(section.scrollLeft).toBe(556 - 76 - 60);
+  });
+
   test("녹음 중 위치는 주황(녹음 색) 재생선", () => {
     const { container } = render(<Timeline position={8} recording />);
     const playhead = container.querySelector<HTMLElement>("[data-playhead]");
