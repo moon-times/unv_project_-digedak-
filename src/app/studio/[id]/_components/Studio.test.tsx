@@ -77,10 +77,11 @@ describe("스튜디오 진행 바", () => {
     expect(stepButton(/보정 · AI 분석/).getAttribute("aria-current")).toBe(
       "step",
     );
-    // 코드가 아직 없어서 반주로는 못 넘어감
+    // 보정 패널이 열리며 분석해 코드가 생기므로 반주로 넘어갈 수 있다
+    expect(useSongStore.getState().song.chords.length).toBeGreaterThan(0);
     expect(stepButton(/다음 단계: 반주 고르기/)).toHaveProperty(
       "disabled",
-      true,
+      false,
     );
   });
 
