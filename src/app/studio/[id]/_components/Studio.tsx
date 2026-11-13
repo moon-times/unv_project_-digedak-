@@ -22,6 +22,7 @@ import {
 import {
   getAvailableSteps,
   STUDIO_STEPS,
+  TITLE_MAX_LENGTH,
   useSongStore,
   type SaveStatus,
   type StudioStep,
@@ -214,6 +215,7 @@ function StudioHeader({
       <div className="flex min-w-0 flex-1 flex-col">
         <input
           value={title}
+          maxLength={TITLE_MAX_LENGTH}
           onChange={(e) => setTitle(e.target.value)}
           aria-label="곡 제목"
           className="min-w-0 bg-transparent font-display text-[22px] leading-tight outline-none"

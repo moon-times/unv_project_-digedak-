@@ -6,7 +6,7 @@ import { Soon } from "@/app/_components/Soon";
 import { exportWav, wavFileName } from "@/features/editor/exportWav";
 import type { RenderProgress } from "@/features/player";
 import { formatTime, songDurationSeconds } from "@/lib/transport";
-import { useSongStore } from "@/store/songStore";
+import { TITLE_MAX_LENGTH, useSongStore } from "@/store/songStore";
 import { DownloadIcon } from "./icons";
 
 type ExportState =
@@ -121,6 +121,7 @@ function MemberExport() {
         곡 제목
         <input
           value={title}
+          maxLength={TITLE_MAX_LENGTH}
           onChange={(e) => setTitle(e.target.value)}
           className="mt-1 block min-h-11 w-full rounded-xl border-2 border-ink bg-paper px-3 text-[16px] font-normal"
         />
