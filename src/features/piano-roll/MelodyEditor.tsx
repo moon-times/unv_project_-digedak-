@@ -4,8 +4,13 @@
 // - 음 몸통 끌기: 시간 · 높이 이동 / 오른쪽 끝 끌기: 길이
 // - 방향키: ←/→ 격자 한 칸, ↑/↓ 반음, Shift+↑/↓ 옥타브
 // 끄는 동안에는 이 컴포넌트 안에서만 다시 그리고, 놓을 때 한 번만 setMelody 합니다(자동 저장 · 재생기 재빌드 줄이기).
-import { useEffect, useRef, useState, type PointerEvent } from "react";
-import { useSongStore } from "@/store/songStore";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type PointerEvent,
+  type ReactNode,
+} from "react";
 import type { Note, Step } from "@/types/song";
 import {
   addNote,
@@ -51,6 +56,7 @@ export function MelodyEditor({
   barSteps,
   look,
   selection: { selected, setSelected },
+  onChange,
 }: {
   melody: Note[];
   low: number;
@@ -61,8 +67,10 @@ export function MelodyEditor({
   barSteps: number;
   look: string;
   selection: MelodySelection;
+  /** 편집 결과. 되돌리기 기록을 쌓는 쪽(useMelodyHistory)이 store에 넣습니다 */
+  onChange: (melody: Note[]) => void;
 }) {
-  const setMelody = useSongStore((s) => s.setMelody);
+  const setMelody = onChange;
   const drag = useRef<Drag | null>(null);
   const [preview, setPreview] = useState<{ index: number; note: Note } | null>(
     null,
@@ -283,6 +291,207 @@ export function EditBar({
           길이가 바뀌어요.
         </span>
       )}
+    </div>
+  );
+}
+
+/** 편집 도구 줄: 스냅 단위, [박자 맞추기], 되돌리기 · 다시하기, (스튜디오가 넣는) [멜로디만 듣기] */
+export function EditTools({
+  snapGrid,
+  barSteps,
+  onSnapGrid,
+  onAlign,
+  alignDisabled,
+  history,
+  children,
+}: {
+  snapGrid: Step;
+  barSteps: number;
+  onSnapGrid: (grid: Step) => void;
+  onAlign: () => void;
+  alignDisabled: boolean;
+  history: {
+    undo: () => void;
+    redo: () => void;
+    canUndo: boolean;
+    canRedo: boolean;
+  };
+  children?: ReactNode;
+}) {
+  const choices: [string, Step][] = [
+    ["1/16", 1],
+    ["1/8", 2],
+    ["1박", 4],
+    ["1마디", barSteps],
+  ];
+  const button =
+    "min-h-9 rounded-full border-2 border-ink bg-surface px-3 text-[14px] font-semibold disabled:opacity-40";
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <div
+        role="radiogroup"
+        aria-label="스냅"
+        className="flex items-center gap-1 rounded-full border-2 border-ink bg-surface p-0.5"
+      >
+        <span className="px-2 text-[13px] font-semibold text-ink-muted">
+          스냅
+        </span>
+        {choices.map(([label, grid]) => (
+          <button
+            key={label}
+            type="button"
+            role="radio"
+            aria-checked={snapGrid === grid}
+            onClick={() => onSnapGrid(grid)}
+            className={`min-h-8 rounded-full px-2.5 text-[13px] font-semibold tabular-nums ${
+              snapGrid === grid ? "bg-primary text-on-primary" : ""
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <button
+        type="button"
+        onClick={onAlign}
+        disabled={alignDisabled}
+        title="모든 음을 고른 스냅 칸에 맞춰요"
+        className={button}
+      >
+        박자 맞추기
+      </button>
+      {children}
+      <div className="ml-auto flex gap-1.5">
+        <button
+          type="button"
+          onClick={history.undo}
+          disabled={!history.canUndo}
+          aria-keyshortcuts="Control+Z"
+          className={button}
+        >
+          되돌리기
+        </button>
+        <button
+          type="button"
+          onClick={history.redo}
+          disabled={!history.canRedo}
+          aria-keyshortcuts="Control+Shift+Z"
+          className={button}
+        >
+          다시하기
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** 이보다 작게는 내리지 않습니다 (세기 0이면 소리가 안 나서 음이 사라진 것처럼 들림) */
+const MIN_VELOCITY = 0.05;
+
+/** 0 ~ 1. 줄 위쪽이 1 */
+export function velocityAt(y: number, height: number) {
+  const value = 1 - y / height;
+  return Math.round(Math.min(1, Math.max(MIN_VELOCITY, value)) * 100) / 100;
+}
+
+/** x(px) 위치의 음. 음 안이 아니면 null */
+export function noteIndexAt(melody: Note[], step: number) {
+  const index = melody.findIndex(
+    (note) => step >= note.start && step < note.start + note.duration,
+  );
+  return index === -1 ? null : index;
+}
+
+/**
+ * 멜로디 아래 세기 줄. 음마다 막대가 있고, 막대 위를 누르거나 위아래로 끌면 그 음의 세기가 바뀝니다.
+ * 끄는 동안에는 이 줄만 다시 그리고 놓을 때 한 번만 반영합니다.
+ */
+export function VelocityLane({
+  melody,
+  height,
+  stepWidth,
+  selected,
+  onChange,
+}: {
+  melody: Note[];
+  height: number;
+  stepWidth: number;
+  selected: number | null;
+  onChange: (melody: Note[]) => void;
+}) {
+  const drag = useRef<{ index: number; top: number; value: number } | null>(
+    null,
+  );
+  const [preview, setPreview] = useState<{
+    index: number;
+    value: number;
+  } | null>(null);
+
+  function update(e: PointerEvent<HTMLDivElement>) {
+    const current = drag.current;
+    if (!current) return;
+    current.value = velocityAt(e.clientY - current.top, height);
+    setPreview({ index: current.index, value: current.value });
+  }
+
+  function finish() {
+    const current = drag.current;
+    drag.current = null;
+    setPreview(null);
+    if (!current) return;
+    const note = melody[current.index];
+    if (!note || note.velocity === current.value) return;
+    onChange(
+      melody.map((n, i) =>
+        i === current.index ? { ...n, velocity: current.value } : n,
+      ),
+    );
+  }
+
+  return (
+    <div
+      data-velocity-lane
+      className="absolute inset-0 cursor-ns-resize touch-none"
+      onPointerDown={(e) => {
+        if (e.button !== 0) return;
+        const rect = e.currentTarget.getBoundingClientRect();
+        const index = noteIndexAt(
+          melody,
+          Math.floor((e.clientX - rect.left) / stepWidth),
+        );
+        if (index === null) return;
+        drag.current = { index, top: rect.top, value: melody[index].velocity };
+        e.currentTarget.setPointerCapture?.(e.pointerId);
+        update(e);
+      }}
+      onPointerMove={update}
+      onPointerUp={finish}
+      onLostPointerCapture={finish}
+      onPointerCancel={() => {
+        drag.current = null;
+        setPreview(null);
+      }}
+    >
+      {melody.map((note, index) => {
+        const value = preview?.index === index ? preview.value : note.velocity;
+        return (
+          <div
+            key={`${note.start}:${note.pitch}`}
+            data-velocity
+            title={`세기 ${Math.round(value * 100)}`}
+            className={`pointer-events-none absolute bottom-0 rounded-t-[2px] ${
+              selected === index
+                ? "bg-timeline-text"
+                : "bg-track-melody-to opacity-80"
+            }`}
+            style={{
+              left: note.start * stepWidth + 1,
+              width: Math.max(2, Math.min(note.duration * stepWidth - 3, 10)),
+              height: Math.max(2, value * (height - 4)),
+            }}
+          />
+        );
+      })}
     </div>
   );
 }

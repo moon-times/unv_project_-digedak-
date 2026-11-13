@@ -7,6 +7,7 @@ import { useSyncExternalStore, type ReactNode } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { ArrangePanel } from "@/features/arranger/ArrangePanel";
 import { MixerPanel } from "@/features/mixer/MixerPanel";
+import { MelodyOnlyButton } from "@/features/piano-roll/MelodyOnlyButton";
 import { Timeline } from "@/features/piano-roll/Timeline";
 import { useAuthUser } from "@/lib/supabase/useAuthUser";
 import { useProjectSync, type SyncPhase } from "./useProjectSync";
@@ -322,6 +323,7 @@ function TimelineWithPlayhead() {
       // 멜로디 편집은 ② 보정 단계에서만
       editable={studioStep === "refine"}
       onSeek={seekTo}
+      tools={<MelodyOnlyButton />}
     />
   );
 }

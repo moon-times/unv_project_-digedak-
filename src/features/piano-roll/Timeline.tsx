@@ -9,8 +9,10 @@ import { DRUM } from "@/features/arranger";
 import { stepsPerBar } from "@/lib/transport";
 import { useSongStore } from "@/store/songStore";
 import type { Note, Step } from "@/types/song";
-import { deleteNote } from "./edit";
-import { EditBar, MelodyEditor } from "./MelodyEditor";
+import { snapNotes } from "@/features/recorder/quantize";
+import { deleteNote, sameNote } from "./edit";
+import { EditBar, EditTools, MelodyEditor, VelocityLane } from "./MelodyEditor";
+import { useMelodyHistory } from "./useMelodyHistory";
 import {
   LABEL_WIDTH,
   fitStepWidth,
@@ -29,19 +31,19 @@ const EDIT_PITCH_MARGIN = 2;
 /**
  * @param position 재생 위치(step). 재생 중 · 일시정지일 때만 넘깁니다.
  * @param editable 멜로디 줄 편집 (보정 단계에서만 true)
- * @param grid 편집할 때 맞출 격자(step). 1 = 16분음표
  * @param onSeek 마디 번호 줄을 누르면 그 위치(step)로
+ * @param tools 편집 도구 줄에 더 넣을 것 (스튜디오의 [멜로디만 듣기])
  */
 export function Timeline({
   position,
   editable = false,
-  grid: snapGrid = 1,
   onSeek,
+  tools,
 }: {
   position?: Step;
   editable?: boolean;
-  grid?: Step;
   onSeek?: (step: Step) => void;
+  tools?: ReactNode;
 }) {
   // 제목 · 빠르기 등이 바뀔 때는 다시 그리지 않도록 그리는 데 필요한 값만 구독합니다.
   const song: TimelineSong = useSongStore(
@@ -83,7 +85,10 @@ export function Timeline({
     editable && selectedIndex !== null && selectedIndex < song.melody.length
       ? selectedIndex
       : null;
-  const setMelody = useSongStore((s) => s.setMelody);
+  // 편집 격자(스냅). 기본 16분음표
+  const [snapGrid, setSnapGrid] = useState<Step>(1);
+  const history = useMelodyHistory();
+  useUndoShortcuts(editable, history);
 
   const timeline = (
     <section
@@ -172,6 +177,7 @@ export function Timeline({
               barSteps={barSteps}
               look={`${MELODY_NOTE.fill} ${MELODY_NOTE.edge}`}
               selection={{ selected, setSelected }}
+              onChange={history.commit}
             />
           ) : song.melody.length === 0 ? (
             <EmptyLane text="① 녹음하면 멜로디가 여기에 나타나요" />
@@ -187,6 +193,23 @@ export function Timeline({
             />
           )}
         </Row>
+
+        {editable && (
+          <Row
+            label="세기"
+            height={VELOCITY_ROW_HEIGHT}
+            grid={grid}
+            lane="velocity"
+          >
+            <VelocityLane
+              melody={song.melody}
+              height={VELOCITY_ROW_HEIGHT}
+              stepWidth={stepWidth}
+              selected={selected}
+              onChange={history.commit}
+            />
+          </Row>
+        )}
 
         {(
           [
@@ -234,18 +257,70 @@ export function Timeline({
   if (!editable) return timeline;
   return (
     <div className="flex h-full flex-col gap-2">
+      <EditTools
+        snapGrid={snapGrid}
+        barSteps={barSteps}
+        onSnapGrid={setSnapGrid}
+        onAlign={() => {
+          const aligned = snapNotes(song.melody, snapGrid);
+          if (!sameMelody(aligned, song.melody)) history.commit(aligned);
+        }}
+        alignDisabled={song.melody.length === 0}
+        history={history}
+      >
+        {tools}
+      </EditTools>
       <EditBar
         note={selected === null ? null : song.melody[selected]}
         barSteps={barSteps}
         onDelete={() => {
           if (selected === null) return;
-          setMelody(deleteNote(song.melody, selected));
+          history.commit(deleteNote(song.melody, selected));
           setSelected(null);
         }}
       />
       {timeline}
     </div>
   );
+}
+
+const VELOCITY_ROW_HEIGHT = 40;
+
+function sameMelody(a: Note[], b: Note[]) {
+  return a.length === b.length && a.every((note, i) => sameNote(note, b[i]));
+}
+
+/** Ctrl(⌘)+Z 되돌리기, Ctrl(⌘)+Shift+Z · Ctrl+Y 다시하기. 글자 입력 칸에서는 브라우저 기본 동작 */
+function useUndoShortcuts(
+  enabled: boolean,
+  history: { undo: () => void; redo: () => void },
+) {
+  const latest = useRef(history);
+  useEffect(() => {
+    latest.current = history;
+  });
+  useEffect(() => {
+    if (!enabled) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+      const target = e.target;
+      if (
+        target instanceof Element &&
+        target.closest("input, textarea, select, [contenteditable='true']")
+      )
+        return;
+      const key = e.key.toLowerCase();
+      if (key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        latest.current.undo();
+      } else if ((key === "z" && e.shiftKey) || key === "y") {
+        e.preventDefault();
+        latest.current.redo();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [enabled]);
 }
 
 function widen([low, high]: [number, number], margin: number) {
