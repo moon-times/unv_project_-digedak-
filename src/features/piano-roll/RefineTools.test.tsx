@@ -117,6 +117,21 @@ describe("스냅 · 박자 맞추기", () => {
   });
 });
 
+test("다른 단계로 갔다 돌아오면 선택한 음이 비워져 있다", () => {
+  const { rerender } = render(<Timeline editable />);
+  const third = screen.getAllByRole("button", { name: /마디/ })[2];
+  fireEvent.focus(third);
+  expect(third.getAttribute("aria-pressed")).toBe("true");
+  rerender(<Timeline />);
+  rerender(<Timeline editable />);
+  expect(
+    screen
+      .getAllByRole("button", { name: /마디/ })
+      .some((note) => note.getAttribute("aria-pressed") === "true"),
+  ).toBe(false);
+  expect(screen.getByText(/두 번 누르면/)).toBeTruthy();
+});
+
 describe("되돌리기 · 다시하기", () => {
   test("편집 → 되돌리기 → 다시하기", () => {
     render(<Timeline editable />);

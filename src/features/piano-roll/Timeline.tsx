@@ -81,6 +81,8 @@ export function Timeline({
 
   // 선택한 음(멜로디 안 위치). 편집이 꺼지거나 음이 지워져 범위를 벗어나면 선택 없음으로 봅니다.
   const [selectedIndex, setSelected] = useState<number | null>(null);
+  // 편집이 꺼지면(다른 단계로 가면) 선택을 비웁니다. 돌아왔을 때 그 사이 바뀐 멜로디의 엉뚱한 음이 선택되지 않게.
+  if (!editable && selectedIndex !== null) setSelected(null);
   const selected =
     editable && selectedIndex !== null && selectedIndex < song.melody.length
       ? selectedIndex
