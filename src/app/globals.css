@@ -1,12 +1,6 @@
 @import "tailwindcss";
 
 /* 디자인 토큰: docs/design/README.md 색 표. 목업은 밝은 테마 하나뿐이라 다크 모드는 두지 않습니다. */
-:root {
-  /* 스튜디오 · 타임라인이 아직 쓰는 이름. 토큰으로 옮기면 지웁니다. */
-  --background: #f3e6cf;
-  --foreground: #2b2018;
-}
-
 @theme {
   --color-paper: #f3e6cf;
   --color-surface: #fbf4e8;
@@ -19,11 +13,36 @@
   --color-earth: #6e4a30;
   --color-record: #e9603c;
   --color-danger: #a23b2a;
+
+  /* 타임라인 (어두운 영역) */
+  --color-timeline: #2d2925;
+  --color-timeline-row: #3f3934;
+  --color-timeline-ruler-from: #524a42;
+  --color-timeline-ruler-to: #3c3631;
+  --color-timeline-text: #efe5d5;
+  --color-timeline-grid: rgb(20 15 11 / 0.8);
+
+  /* 트랙 색: 음표 블록은 from → to 그라데이션 + border. to가 믹서 점 색 */
+  --color-track-chord-from: #f6ead6;
+  --color-track-chord-to: #d6bf98;
+  --color-track-melody-from: #c4f5b5;
+  --color-track-melody-to: #7fd06f;
+  --color-track-melody-border: #2d5e2a;
+  --color-track-drum: #e99a3c;
+  --color-track-drum-low: #c9772a;
+  --color-track-drum-high: #f6d3a0;
+  --color-track-bass-from: #a6e6da;
+  --color-track-bass-to: #4fb3a0;
+  --color-track-bass-border: #1e4f46;
+  --color-track-keys-from: #ffd0d6;
+  --color-track-keys-to: #ee9da8;
+  --color-track-keys-border: #7a3a44;
+  --color-track-guitar-from: #cfe3f8;
+  --color-track-guitar-to: #8fb8e8;
+  --color-track-guitar-border: #2a4a6e;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
   --font-sans: var(--font-plex), sans-serif;
   --font-display: var(--font-jua), var(--font-plex), sans-serif;
 }
