@@ -7,10 +7,15 @@ import { useState, useSyncExternalStore, type ReactNode } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { ArrangePanel } from "@/features/arranger/ArrangePanel";
 import { MixerPanel } from "@/features/mixer/MixerPanel";
+import { MelodyOnlyButton } from "@/features/piano-roll/MelodyOnlyButton";
+import { RefinePanel } from "@/features/piano-roll/RefinePanel";
 import { Timeline } from "@/features/piano-roll/Timeline";
+import { RecordPanel } from "@/features/recorder/RecordPanel";
+import { useRecordingPosition } from "@/features/recorder/recordingPosition";
 import { useAuthUser } from "@/lib/supabase/useAuthUser";
 import { ExportDialog } from "./ExportDialog";
 import { useProjectSync, type SyncPhase } from "./useProjectSync";
+import { useRecordingUpload } from "./useRecordingUpload";
 import {
   INITIAL_PLAYER_STATE,
   player,
@@ -36,13 +41,11 @@ import {
   StopIcon,
 } from "./icons";
 import { ProgressBar, STEP_LABELS } from "./ProgressBar";
-import { Slot } from "./Slot";
 import { countBars, formatTime, songDurationSeconds } from "@/lib/transport";
 
-// A 패널이 준비되면 Slot 대신 해당 컴포넌트를 넣습니다.
 const PANELS: Record<StudioStep, ReactNode> = {
-  record: <Slot label="녹음 패널 (빠르기 · 카운트인 포함)" owner="A" />,
-  refine: <Slot label="보정 · AI 분석 패널" owner="A" />,
+  record: <RecordPanel />,
+  refine: <RefinePanel />,
   arrange: <ArrangePanel />,
   mix: <MixerPanel />,
 };
@@ -69,6 +72,7 @@ export function Studio({ projectId }: { projectId: string | null }) {
   // 로그인 상태를 확인하는 동안에는 회원 · 게스트 어느 쪽 화면도 보이지 않게 둡니다.
   const auth: Auth = loading ? "loading" : user ? "member" : "guest";
   const phase = useProjectSync(projectId, auth === "member");
+  useRecordingUpload(auth === "member");
   const step = useSongStore((s) => s.step);
   // song 전체를 구독하면 제목 한 글자마다 타임라인까지 다시 그려지므로, 열린 단계 목록만 구독합니다.
   const available = useSongStore(useShallow((s) => getAvailableSteps(s.song)));
@@ -342,6 +346,24 @@ function usePlayerValue<T extends string | number | boolean>(
 // 재생 위치만 프레임마다 바뀌므로, 위치를 구독하는 부분을 따로 둡니다.
 function TimelineWithPlayhead() {
   const { status, step } = usePlayerState();
+  const studioStep = useSongStore((s) => s.step);
+  const recordingStep = useRecordingPosition();
   const showPlayhead = status === "playing" || status === "paused";
-  return <Timeline position={showPlayhead ? step : undefined} />;
+  // 녹음 중이면 녹음 위치를 주황 재생선으로 (녹음 전에 재생을 멈추므로 둘이 겹치지 않음)
+  if (recordingStep !== null)
+    return <Timeline position={recordingStep} recording />;
+  return (
+    <Timeline
+      position={showPlayhead ? step : undefined}
+      // 멜로디 편집은 ② 보정 단계에서만
+      editable={studioStep === "refine"}
+      onSeek={seekTo}
+      tools={<MelodyOnlyButton />}
+    />
+  );
+}
+
+/** 마디 번호 줄을 누르면 그 위치로. 멈춰 있을 때도 다음 재생이 그 위치부터 시작합니다 */
+function seekTo(step: number) {
+  player.seek(step);
 }

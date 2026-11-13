@@ -8,11 +8,9 @@ import { deleteProject } from "@/lib/supabase/projects";
 export function DeleteProjectButton({
   id,
   title,
-  recordingPath,
 }: {
   id: string;
   title: string;
-  recordingPath: string | null;
 }) {
   const router = useRouter();
   const dialog = useRef<HTMLDialogElement>(null);
@@ -23,7 +21,7 @@ export function DeleteProjectButton({
     setPending(true);
     setFailed(false);
     try {
-      await deleteProject(createClient(), id, recordingPath);
+      await deleteProject(createClient(), id);
       dialog.current?.close();
       router.refresh();
     } catch {

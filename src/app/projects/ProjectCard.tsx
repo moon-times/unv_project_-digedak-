@@ -82,7 +82,6 @@ export function ProjectCard({ project }: { project: ProjectSummary }) {
             <DeleteProjectButton
               id={project.id}
               title={project.title || "제목 없는 곡"}
-              recordingPath={project.recordingPath}
             />
           </div>
         </details>
