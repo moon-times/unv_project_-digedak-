@@ -122,7 +122,7 @@ export function Timeline({ position }: { position?: Step }) {
               high={high}
               height={melodyRows * MELODY_ROW_HEIGHT}
               stepWidth={stepWidth}
-              className={MELODY_NOTE}
+              look={MELODY_NOTE}
               titled
             />
           )}
@@ -130,12 +130,12 @@ export function Timeline({ position }: { position?: Step }) {
 
         {(
           [
-            ["드럼", "drums", drums, "bg-track-drum", drumNoteClass],
+            ["드럼", "drums", drums, "bg-track-drum", DRUM_NOTE],
             ["베이스", "bass", bass, "bg-track-bass-to", BASS_NOTE],
             ["건반", "keys", keys, "bg-track-keys-to", KEYS_NOTE],
             ["기타", "guitar", guitar, "bg-track-guitar-to", GUITAR_NOTE],
           ] as const
-        ).map(([label, lane, notes, dot, noteClass]) => (
+        ).map(([label, lane, notes, dot, noteLook]) => (
           <Row
             key={lane}
             label={label}
@@ -153,7 +153,7 @@ export function Timeline({ position }: { position?: Step }) {
                 {...rangeOf(notes)}
                 height={ACCOMPANIMENT_HEIGHT}
                 stepWidth={stepWidth}
-                className={noteClass}
+                look={noteLook}
               />
             )}
           </Row>
@@ -172,15 +172,29 @@ export function Timeline({ position }: { position?: Step }) {
   );
 }
 
-// 음표 블록: 위 밝은 색 → 아래 진한 색 + 같은 계열 테두리 (docs/design/README.md "트랙 색")
-const MELODY_NOTE =
-  "border border-track-melody-border bg-linear-to-b from-track-melody-from to-track-melody-to";
-const BASS_NOTE =
-  "border border-track-bass-border bg-linear-to-b from-track-bass-from to-track-bass-to";
-const KEYS_NOTE =
-  "border border-track-keys-border bg-linear-to-b from-track-keys-from to-track-keys-to";
-const GUITAR_NOTE =
-  "border border-track-guitar-border bg-linear-to-b from-track-guitar-from to-track-guitar-to";
+// 음표 블록: 위 밝은 색 → 아래 진한 색(fill) + 같은 계열 테두리(edge) (docs/design/README.md "트랙 색")
+const MELODY_NOTE = {
+  fill: "bg-linear-to-b from-track-melody-from to-track-melody-to",
+  edge: "border border-track-melody-border",
+};
+const BASS_NOTE = {
+  fill: "bg-linear-to-b from-track-bass-from to-track-bass-to",
+  edge: "border border-track-bass-border",
+};
+const KEYS_NOTE = {
+  fill: "bg-linear-to-b from-track-keys-from to-track-keys-to",
+  edge: "border border-track-keys-border",
+};
+const GUITAR_NOTE = {
+  fill: "bg-linear-to-b from-track-guitar-from to-track-guitar-to",
+  edge: "border border-track-guitar-border",
+};
+const DRUM_NOTE = { fill: drumNoteClass };
+
+/** 음표 높이가 이보다 낮으면 위아래 1px 테두리가 색을 다 덮으므로 테두리를 뺍니다 */
+const MIN_EDGE_ROW_HEIGHT = 4;
+/** 트랙 이름 줄 높이(px). 멜로디 줄의 음 이름이 이 높이 안에 오면 이름과 겹칩니다 */
+const LABEL_LINE_HEIGHT = 32;
 
 /** 드럼은 악기별 색: 킥 진하게, 하이햇 · 크래시 밝게, 나머지(스네어 등) 기본 */
 function drumNoteClass(note: Note) {
@@ -199,13 +213,21 @@ function rangeOf(notes: Note[]) {
   return { low, high };
 }
 
-/** 트랙 이름 앞 색 점 */
-function Dot({ className }: { className: string }) {
+/** 트랙 이름 (앞에 트랙 색 점) */
+function RowLabel({ dot, children }: { dot?: string; children: ReactNode }) {
   return (
     <span
-      aria-hidden
-      className={`inline-block size-2.5 shrink-0 rounded-[3px] ${className}`}
-    />
+      className="flex items-center gap-1.5 whitespace-nowrap"
+      style={{ lineHeight: `${LABEL_LINE_HEIGHT}px` }}
+    >
+      {dot && (
+        <span
+          aria-hidden
+          className={`inline-block size-2.5 shrink-0 rounded-[3px] ${dot}`}
+        />
+      )}
+      {children}
+    </span>
   );
 }
 
@@ -243,10 +265,7 @@ function Row({
         style={{ width: LABEL_WIDTH }}
       >
         {typeof label === "string" ? (
-          <span className="flex items-center gap-1.5 leading-8 whitespace-nowrap">
-            {dot && <Dot className={dot} />}
-            {label}
-          </span>
+          <RowLabel dot={dot}>{label}</RowLabel>
         ) : (
           label
         )}
@@ -293,7 +312,7 @@ function Notes({
   high,
   height,
   stepWidth,
-  className,
+  look,
   titled = false,
 }: {
   notes: Note[];
@@ -301,18 +320,20 @@ function Notes({
   high: number;
   height: number;
   stepWidth: number;
-  className: string | ((note: Note) => string);
+  look: { fill: string | ((note: Note) => string); edge?: string };
   titled?: boolean;
 }) {
   const rowHeight = height / (high - low + 1);
-  const classOf = typeof className === "string" ? () => className : className;
+  const { fill, edge } = look;
+  const fillOf = typeof fill === "string" ? () => fill : fill;
+  const edgeClass = edge && rowHeight >= MIN_EDGE_ROW_HEIGHT ? edge : "";
   return notes.map((note) => (
     <div
       // 순서가 아니라 위치 · 높이로 구분해야 편집(삭제 · 이동) 때 다른 음표 요소가 재사용되지 않습니다
       key={`${note.start}:${note.pitch}`}
       data-note
       title={titled ? noteName(note.pitch) : undefined}
-      className={`absolute rounded-[2px] ${classOf(note)}`}
+      className={`absolute rounded-[2px] ${fillOf(note)} ${edgeClass}`}
       style={{
         left: note.start * stepWidth,
         width: note.duration * stepWidth - 1,
@@ -329,8 +350,8 @@ function PitchLabels({ low, high }: { low: number; high: number }) {
   const labels = [];
   for (let pitch = low; pitch <= high; pitch++) {
     if (pitch % 12 !== 0) continue;
-    // 맨 위 "멜로디" 이름(leading-8 = 32px)과 겹치는 높이는 건너뜁니다.
-    if ((high - pitch) * MELODY_ROW_HEIGHT < 32) continue;
+    // 맨 위 "멜로디" 이름과 겹치는 높이는 건너뜁니다.
+    if ((high - pitch) * MELODY_ROW_HEIGHT < LABEL_LINE_HEIGHT) continue;
     labels.push(
       <span
         key={pitch}
@@ -343,10 +364,7 @@ function PitchLabels({ low, high }: { low: number; high: number }) {
   }
   return (
     <div className="relative h-full">
-      <span className="flex items-center gap-1.5 leading-8 whitespace-nowrap">
-        <Dot className="bg-track-melody-to" />
-        멜로디
-      </span>
+      <RowLabel dot="bg-track-melody-to">멜로디</RowLabel>
       {labels}
     </div>
   );

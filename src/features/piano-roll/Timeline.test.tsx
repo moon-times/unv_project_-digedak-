@@ -1,6 +1,7 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { useSongStore } from "@/store/songStore";
+import { LABEL_WIDTH, STEP_WIDTH } from "./layout";
 import { Timeline } from "./Timeline";
 
 const note = (pitch: number, start: number) => ({
@@ -78,6 +79,20 @@ describe("Timeline", () => {
 
     rerender(<Timeline position={16} />);
     const playhead = container.querySelector<HTMLElement>("[data-playhead]");
-    expect(playhead?.style.left).toBe(`${76 + 16 * 12}px`);
+    expect(playhead?.style.left).toBe(`${LABEL_WIDTH + 16 * STEP_WIDTH}px`);
+  });
+
+  test("음표가 낮게 그려지는 줄은 테두리를 빼서 색이 보이게 한다", () => {
+    useSongStore.getState().setAccompaniment({
+      drums: [],
+      bass: [note(40, 0), note(43, 8)], // 음역 좁음 → 음표가 충분히 높음
+      keys: [note(48, 0), note(84, 8)], // 3옥타브 → 음표 1px대
+      guitar: [],
+    });
+    const { container } = render(<Timeline />);
+    const [bass] = lane(container, "bass").querySelectorAll("[data-note]");
+    const [keys] = lane(container, "keys").querySelectorAll("[data-note]");
+    expect(bass.className).toContain("border-track-bass-border");
+    expect(keys.className).not.toContain("border-track-keys-border");
   });
 });
