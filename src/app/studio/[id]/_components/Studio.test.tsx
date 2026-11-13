@@ -193,3 +193,33 @@ describe("곡 불러오기 상태", () => {
     );
   });
 });
+
+describe("내보내기 버튼", () => {
+  const exportButton = () => screen.getByRole("button", { name: "내보내기" });
+
+  test("빈 곡이면 꺼져 있다", () => {
+    render(<Studio projectId={null} />);
+    expect(exportButton()).toHaveProperty("disabled", true);
+  });
+
+  test("멜로디만 있어도 켜지고, 누르면 팝업이 열린다", () => {
+    // jsdom에는 모달 dialog가 없어 열기만 흉내 냅니다.
+    HTMLDialogElement.prototype.showModal = function () {
+      this.open = true;
+    };
+    useSongStore.getState().setMelody([note]);
+    render(<Studio projectId={null} />);
+
+    fireEvent.click(exportButton());
+    expect(
+      screen.getByRole("heading", { name: "로그인하면 바로 저장할 수 있어요" }),
+    ).toBeTruthy();
+  });
+
+  test("로그인 확인 중에는 꺼져 있다", () => {
+    auth.state = { user: null, loading: true };
+    useSongStore.getState().setMelody([note]);
+    render(<Studio projectId={null} />);
+    expect(exportButton()).toHaveProperty("disabled", true);
+  });
+});

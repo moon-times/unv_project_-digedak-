@@ -6,7 +6,7 @@ export {
   type PlayerState,
   type PlayerStatus,
 } from "./player";
-export { renderSong, type RenderOptions } from "./render";
+export { renderSong, type RenderOptions, type RenderProgress } from "./render";
 export {
   playbackEndStep,
   scheduleSong,

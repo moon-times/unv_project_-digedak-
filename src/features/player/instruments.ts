@@ -1,6 +1,6 @@
 // smplr 샘플 악기 구성. Track.instrument 이름으로 악기를 고릅니다.
 // 실시간 재생(AudioContext)과 WAV 렌더링(OfflineAudioContext)이 같은 코드를 씁니다.
-import type { NoteEvent } from "smplr";
+import type { NoteEvent, Scheduler } from "smplr";
 import type { TrackId } from "@/types/song";
 
 type SmplrModule = typeof import("smplr");
@@ -93,21 +93,29 @@ export function createInstrument(
   context: BaseAudioContext,
   name: string,
   destination: AudioNode,
+  /** 오프라인 렌더링용. 없으면 smplr 기본 스케줄러(0.2초 앞까지만 바로 예약) */
+  scheduler?: Scheduler,
 ): Playable {
   switch (name) {
     case "piano":
-      return smplr.SplendidGrandPiano(context, { destination });
+      return smplr.SplendidGrandPiano(context, { destination, scheduler });
     case "drums":
       return smplr.DrumMachine(context, {
         instrument: DRUM_MACHINE,
         destination,
+        scheduler,
       });
     case "bass":
       return smplr.Soundfont(context, {
         instrument: "electric_bass_finger",
         destination,
+        scheduler,
       });
     default:
-      return smplr.Soundfont(context, { instrument: name, destination });
+      return smplr.Soundfont(context, {
+        instrument: name,
+        destination,
+        scheduler,
+      });
   }
 }
