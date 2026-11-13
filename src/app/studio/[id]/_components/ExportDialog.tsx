@@ -232,7 +232,8 @@ function GuestExport() {
       </p>
       <div className="mt-5 flex flex-col gap-2">
         <Link
-          href={`/login?next=/studio/${projectId ?? "new"}`}
+          // 돌아오면 내보내기 팝업을 다시 엽니다 (명세 06, Studio의 export 표시)
+          href={`/login?next=${encodeURIComponent(`/studio/${projectId ?? "new"}?export=1`)}`}
           className={PRIMARY}
         >
           로그인하고 저장하기

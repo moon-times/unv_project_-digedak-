@@ -3,7 +3,12 @@
 import Image from "next/image";
 import Link from "next/link";
 import mascot from "@/app/icon.png";
-import { useState, useSyncExternalStore, type ReactNode } from "react";
+import {
+  useEffect,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
 import { useShallow } from "zustand/react/shallow";
 import { ArrangePanel } from "@/features/arranger/ArrangePanel";
 import { MixerPanel } from "@/features/mixer/MixerPanel";
@@ -80,6 +85,13 @@ export function Studio({ projectId }: { projectId: string | null }) {
   const [exportOpen, setExportOpen] = useState(false);
   // 로그인 확인 중에는 회원 · 게스트 팝업을 고를 수 없어 열지 않습니다.
   const openExport = () => auth !== "loading" && setExportOpen(true);
+  // 게스트 팝업의 [로그인하고 저장하기]로 다녀오면 주소에 export=1이 붙어 옵니다. 회원이면 팝업을 다시 엽니다 (명세 06).
+  // 서버 렌더링에서는 false지만, 팝업은 곡을 다 불러온 뒤(브라우저)에만 그려서 화면이 어긋나지 않습니다.
+  const [exportAfterLogin, setExportAfterLogin] = useState(hasExportFlag);
+  useEffect(() => {
+    if (exportAfterLogin) removeExportFlag();
+  }, [exportAfterLogin]);
+  const showExport = exportOpen || (exportAfterLogin && auth === "member");
 
   // 불러오기가 끝나기 전에는 편집할 수 없게 스튜디오 대신 안내만 보여 줍니다.
   if (phase !== "ready") return <SyncMessage phase={phase} />;
@@ -115,8 +127,11 @@ export function Studio({ projectId }: { projectId: string | null }) {
       <TransportBar />
       <ExportDialog
         member={auth === "member"}
-        open={exportOpen}
-        onClose={() => setExportOpen(false)}
+        open={showExport}
+        onClose={() => {
+          setExportOpen(false);
+          setExportAfterLogin(false);
+        }}
       />
     </div>
   );
@@ -366,4 +381,20 @@ function TimelineWithPlayhead() {
 /** 마디 번호 줄을 누르면 그 위치로. 멈춰 있을 때도 다음 재생이 그 위치부터 시작합니다 */
 function seekTo(step: number) {
   player.seek(step);
+}
+
+const EXPORT_FLAG = "export";
+
+function hasExportFlag(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get(EXPORT_FLAG) === "1"
+  );
+}
+
+/** 새로고침할 때마다 팝업이 열리지 않게 주소에서 지웁니다. */
+function removeExportFlag() {
+  const url = new URL(window.location.href);
+  url.searchParams.delete(EXPORT_FLAG);
+  window.history.replaceState(window.history.state, "", url);
 }

@@ -1,7 +1,12 @@
 // 녹음 원본(A의 latestRecording)을 녹음한 그 곡에 붙여 Storage에 올립니다.
-// docs/specs/05_recording-upload/design.md §3
+// docs/specs/05_recording-upload/design.md §3, 곡 id가 없는 원본의 IndexedDB 보관은 06_guest-continue/design.md §3
 import { useEffect } from "react";
 import { onLatestRecording } from "@/features/recorder/latestRecording";
+import {
+  clearRecordingDraft,
+  loadRecordingDraft,
+  saveRecordingDraft,
+} from "@/lib/recordingDraft";
 import { createClient } from "@/lib/supabase/client";
 import { uploadRecording } from "@/lib/supabase/recordings";
 import { useSongStore } from "@/store/songStore";
@@ -20,6 +25,11 @@ let uploading = false;
 export function resetRecordingUpload() {
   pending = null;
   uploading = false;
+}
+
+/** 기다리는 원본이 곡 id 없는 것이 아니면 IndexedDB 보관본은 더 필요 없습니다. */
+function forgetDraft() {
+  if (pending?.owner !== null) void clearRecordingDraft();
 }
 
 async function upload(job: Pending & { owner: string }): Promise<string> {
@@ -47,6 +57,7 @@ async function tryUpload(isMember: boolean): Promise<void> {
   } finally {
     uploading = false;
     if (pending === job) pending = null;
+    forgetDraft();
   }
   // 올리는 동안 새 녹음이 왔으면 이어서 올립니다.
   if (pending) await tryUpload(isMember);
@@ -56,10 +67,24 @@ async function tryUpload(isMember: boolean): Promise<void> {
 export function useRecordingUpload(isMember: boolean): void {
   useEffect(() => {
     void tryUpload(isMember);
+    // 새 탭 · 새로고침이면 메모리에 없으니 IndexedDB에서 꺼냅니다 (게스트 · 새 곡일 때만).
+    if (pending === null && useSongStore.getState().projectId === null) {
+      void loadRecordingDraft().then((blob) => {
+        if (!blob || pending !== null) return;
+        // 그새 다른 곡이 열렸으면 이 원본은 그 곡 것이 아닙니다.
+        if (useSongStore.getState().projectId !== null) {
+          void clearRecordingDraft();
+          return;
+        }
+        pending = { blob, owner: null };
+      });
+    }
 
     const offRecording = onLatestRecording((blob) => {
       if (!blob) return;
       pending = { blob, owner: useSongStore.getState().projectId };
+      if (pending.owner === null) void saveRecordingDraft(blob);
+      else forgetDraft();
       void tryUpload(isMember);
     });
 
@@ -72,6 +97,7 @@ export function useRecordingUpload(isMember: boolean): void {
         void tryUpload(isMember);
       } else if (pending.owner !== state.projectId) {
         pending = null;
+        forgetDraft();
       }
     });
 
