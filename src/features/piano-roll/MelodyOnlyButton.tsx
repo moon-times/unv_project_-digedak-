@@ -36,6 +36,16 @@ export function MelodyOnlyButton() {
     setActive(false);
   }, [active, status]);
 
+  // 듣는 중에 음을 고치면 재생기가 곡을 다시 읽으며(useSyncPlayerWithSong → player.load) 원래 믹스로 돌려 놓습니다.
+  // 그 구독은 스튜디오가 먼저 걸어 두어 이 구독보다 먼저, 동기로 믹스를 바꾸므로 그 뒤에 멜로디 솔로를 다시 겁니다.
+  useEffect(() => {
+    if (!playing) return;
+    return useSongStore.subscribe((state, previous) => {
+      if (state.song !== previous.song)
+        player.applyMix(melodyOnlyMix(state.song.tracks));
+    });
+  }, [playing]);
+
   // 멜로디만 듣는 중에 다른 단계로 가면 원래 믹스로
   const activeRef = useRef(false);
   useEffect(() => {

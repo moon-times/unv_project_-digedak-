@@ -263,6 +263,33 @@ describe("멜로디만 듣기", () => {
     expect(useSongStore.getState().dirty).toBe(false);
   });
 
+  test("듣는 중에 음을 고쳐도(재생기가 원래 믹스로 돌린 뒤) 멜로디만 들리게 다시 건다", async () => {
+    // 스튜디오의 useSyncPlayerWithSong처럼 먼저 구독해, 곡이 바뀌면 원래 믹스로 돌리는 재생기
+    const unsubscribe = useSongStore.subscribe((state) =>
+      playback.applyMix(state.song.tracks),
+    );
+    render(<MelodyOnlyButton />);
+    await act(async () => fireEvent.click(button("멜로디만 듣기")));
+    act(() =>
+      useSongStore
+        .getState()
+        .setMelody(song().melody.map((note) => ({ ...note, velocity: 0.5 }))),
+    );
+    expect(playback.applyMix).toHaveBeenLastCalledWith(
+      melodyOnlyMix(song().tracks),
+    );
+    unsubscribe();
+  });
+
+  test("멈춘 뒤에 음을 고치면 원래 믹스 그대로", async () => {
+    render(<MelodyOnlyButton />);
+    await act(async () => fireEvent.click(button("멜로디만 듣기")));
+    await act(async () => fireEvent.click(button("멈추기")));
+    playback.applyMix.mockClear();
+    act(() => useSongStore.getState().setMelody([n(70, 0)]));
+    expect(playback.applyMix).not.toHaveBeenCalled();
+  });
+
   test("재생 바에서 정지해도(곡 끝 포함) 원래 믹스로 돌아간다", async () => {
     render(<MelodyOnlyButton />);
     await act(async () => fireEvent.click(button("멜로디만 듣기")));
