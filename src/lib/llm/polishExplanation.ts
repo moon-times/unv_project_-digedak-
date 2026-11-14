@@ -50,7 +50,7 @@ let client: Anthropic | null = null;
 /** ANTHROPIC_API_KEY가 없으면 다듬지 않습니다 (개발 · 미리보기에서도 흐름은 그대로). */
 function getClient(): Anthropic | null {
   if (!process.env.ANTHROPIC_API_KEY) return null;
-  // 한 요청 안에서 다시 묻는 것(1회)까지 /api/analyze 응답이 15초 안팎에 끝나게 합니다.
+  // 요청마다 15초라, 검사에 걸려 다시 묻는 것(1회)까지 /api/analyze는 최대 30초 걸립니다 (Vercel 함수 기본 제한 300초 안).
   client ??= new Anthropic({ maxRetries: 0, timeout: 15_000 });
   return client;
 }

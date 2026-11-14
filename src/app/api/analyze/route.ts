@@ -26,6 +26,8 @@ export async function POST(request: Request) {
   }
 
   const unchanged = { ...analysis, polished: false };
+  // 키가 없는 환경(로컬 · 미리보기)에서는 다듬지 못하니 한도도 깎지 않습니다.
+  if (!process.env.ANTHROPIC_API_KEY) return NextResponse.json(unchanged);
   const { data: allowed, error } = await supabase.rpc("consume_llm_quota", {
     daily_limit: DAILY_POLISH_LIMIT,
   });

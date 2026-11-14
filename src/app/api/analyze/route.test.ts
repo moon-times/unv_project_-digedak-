@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const supabase = vi.hoisted(() => ({
   claims: { sub: "u1" } as object | null,
@@ -42,9 +42,13 @@ const call = async (payload: unknown) => {
 
 beforeEach(() => {
   supabase.claims = { sub: "u1" };
+  vi.stubEnv("ANTHROPIC_API_KEY", "test-key");
   supabase.rpc.mockReset().mockResolvedValue({ data: true, error: null });
   polish.mockReset();
   vi.spyOn(console, "error").mockImplementation(() => {});
+});
+afterEach(() => {
+  vi.unstubAllEnvs();
 });
 
 describe("POST /api/analyze", () => {
@@ -83,6 +87,13 @@ describe("POST /api/analyze", () => {
     expect(polish).toHaveBeenCalledWith(
       expect.objectContaining({ keyName: "C장조", styleLabel: "팝" }),
     );
+  });
+
+  it("API 키가 없으면 한도를 깎지 않고 규칙 엔진 설명 그대로", async () => {
+    vi.stubEnv("ANTHROPIC_API_KEY", "");
+    expect((await call(body)).json).toEqual({ ...analysis, polished: false });
+    expect(supabase.rpc).not.toHaveBeenCalled();
+    expect(polish).not.toHaveBeenCalled();
   });
 
   it("한도를 다 썼으면 LLM 없이 limited", async () => {
