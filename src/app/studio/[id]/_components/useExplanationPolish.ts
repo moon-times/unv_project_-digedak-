@@ -16,7 +16,6 @@ export function resetExplanationPolish() {
 
 async function polish(song: SongState, explanation: string) {
   const body: AnalyzeRequest = {
-    melody: song.melody,
     // 추천 장르 · BPM은 store에 없어 곡의 장르 · 빠르기를 넘깁니다 (서버는 설명 문장에만 씀).
     analysis: {
       key: song.key,

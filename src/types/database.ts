@@ -18,16 +18,19 @@ export type Database = {
         Row: {
           count: number
           day: string
+          kind: string
           user_id: string
         }
         Insert: {
           count?: number
           day: string
+          kind?: string
           user_id: string
         }
         Update: {
           count?: number
           day?: string
+          kind?: string
           user_id?: string
         }
         Relationships: []
@@ -90,7 +93,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      consume_llm_quota: { Args: { daily_limit: number }; Returns: boolean }
+      consume_llm_quota: {
+        Args: { daily_limit: number; usage_kind?: string }
+        Returns: boolean
+      }
       consume_retouch: {
         Args: { max_count: number; target: string }
         Returns: boolean

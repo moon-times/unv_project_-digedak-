@@ -162,8 +162,11 @@ describe("planArrangement", () => {
     expect(create).toHaveBeenCalledTimes(1);
   });
 
-  it("키가 없거나 빈 곡이면 부르지 않음", async () => {
+  it("키가 없거나 빈 곡 · 64마디를 넘는 곡이면 부르지 않음", async () => {
     expect(await planArrangement(createEmptySong())).toBeNull();
+    // 음표 하나로 마디 수를 부풀린 곡 (65마디)
+    const far = { pitch: 60, start: 64 * 16, duration: 1, velocity: 0.8 };
+    expect(await planArrangement({ ...song, melody: [far] })).toBeNull();
     vi.stubEnv("ANTHROPIC_API_KEY", "");
     expect(await planArrangement(song)).toBeNull();
     expect(create).not.toHaveBeenCalled();

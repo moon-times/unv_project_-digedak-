@@ -30,6 +30,7 @@ export async function POST(request: Request) {
   if (!process.env.ANTHROPIC_API_KEY) return NextResponse.json(unchanged);
   const { data: allowed, error } = await supabase.rpc("consume_llm_quota", {
     daily_limit: DAILY_POLISH_LIMIT,
+    usage_kind: "polish",
   });
   if (error) {
     console.error("LLM 한도를 확인하지 못했어요", error);
