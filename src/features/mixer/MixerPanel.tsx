@@ -41,7 +41,7 @@ export function MixerPanel() {
   const updateTrack = useSongStore((s) => s.updateTrack);
 
   return (
-    <div className="flex h-full flex-col gap-3 overflow-y-auto">
+    <div className="flex h-full flex-col gap-2 overflow-y-auto">
       {/* 목업처럼 트랙마다 한 줄(이름 · dB, 슬라이더, 뮤트 · 솔로). 악기는 고를 수 있는 트랙만 아래 작은 줄 */}
       <ul className="flex flex-col rounded-xl border-2 border-ink bg-surface px-3">
         {tracks.map((track) => (
@@ -52,7 +52,7 @@ export function MixerPanel() {
           />
         ))}
       </ul>
-      <div className="flex items-center gap-2 rounded-xl border-2 border-dashed border-line-dashed px-4 py-3 text-[14px] text-ink-muted">
+      <div className="flex items-center gap-2 rounded-xl border-2 border-dashed border-line-dashed px-3 py-2 text-[13px] text-ink-muted">
         울림 (리버브)
         <Soon />
       </div>
@@ -72,7 +72,7 @@ function TrackStrip({
   const choices = INSTRUMENT_CHOICES[track.id];
 
   return (
-    <li className="flex flex-col gap-1.5 border-b border-line py-2 last:border-b-0">
+    <li className="flex flex-col gap-1 border-b border-line py-1.5 last:border-b-0">
       <div className="flex items-center gap-2">
         <span
           aria-hidden
@@ -117,7 +117,7 @@ function TrackStrip({
           aria-label={`${label} 악기`}
           value={track.instrument}
           onChange={(e) => onChange({ instrument: e.target.value })}
-          className="ml-5 h-8 w-fit max-w-full rounded-full border-2 border-ink bg-surface px-2 text-[13px]"
+          className="ml-5 h-7 w-fit max-w-full rounded-full border-2 border-ink bg-surface px-2 text-[13px]"
         >
           {/* 목록에 없는 악기로 저장된 곡도 그 이름 그대로 보여 줍니다. */}
           {!(track.instrument in choices) && (
@@ -151,7 +151,7 @@ function ToggleButton({
       aria-pressed={pressed}
       aria-label={label}
       onClick={onClick}
-      className={`flex size-11 shrink-0 items-center justify-center rounded-full border-2 border-ink text-[12px] font-semibold ${
+      className={`flex size-9 shrink-0 items-center justify-center rounded-full border-2 border-ink text-[12px] font-semibold ${
         pressed ? "bg-ink text-surface" : "bg-surface"
       }`}
     >
