@@ -3,6 +3,7 @@
 // docs/specs/08_llm-retouch/design.md §5
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { DAILY_POLISH_LIMIT } from "@/app/api/analyze/route";
 import { planArrangement } from "@/lib/llm/planArrangement";
 import { loadProject } from "@/lib/supabase/projects";
 import { createClient } from "@/lib/supabase/server";
@@ -69,6 +70,21 @@ export async function POST(request: Request) {
   const { supabase, remaining } = checked;
   if (remaining === 0)
     return NextResponse.json({ limited: true, remaining: 0 });
+
+  // 키가 없는 환경(로컬 · 미리보기)에서는 계획을 못 만드니 하루 한도도 깎지 않습니다.
+  if (!process.env.ANTHROPIC_API_KEY)
+    return NextResponse.json({ error: "failed", remaining });
+  // LLM을 부르기 전에 사용자별 하루 한도(설명 다듬기와 함께 씀)를 먼저 깎습니다.
+  // 프로젝트 횟수는 성공한 뒤에 깎으므로, 이것이 없으면 동시 요청 · 새 프로젝트로 LLM을 끝없이 부를 수 있습니다.
+  const { data: allowed, error: quotaError } = await supabase.rpc(
+    "consume_llm_quota",
+    { daily_limit: DAILY_POLISH_LIMIT },
+  );
+  if (quotaError) {
+    console.error("LLM 하루 한도를 확인하지 못했어요", quotaError);
+    return NextResponse.json({ error: "failed", remaining });
+  }
+  if (!allowed) return NextResponse.json({ dailyLimited: true, remaining });
 
   // 클라이언트가 보낸 곡 대신 저장된 최신 곡으로 계획합니다.
   const loaded = await loadProject(supabase, projectId as string);

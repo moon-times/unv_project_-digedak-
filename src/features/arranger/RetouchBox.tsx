@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { useSongStore } from "@/store/songStore";
 import type { ArrangementPlan } from "@/types/song";
 
-type Status = "idle" | "loading" | "error";
+type Status = "idle" | "loading" | "error" | "daily";
 
 /** 자동 저장이 끝날 때까지 기다립니다. 서버는 저장된 곡으로 계획하므로, 방금 바꾼 코드가 반영되게 합니다. */
 export function waitForSave(timeoutMs = 10_000): Promise<boolean> {
@@ -80,7 +80,9 @@ export function RetouchBox() {
         setArrangement({ ...body.plan, enabled: true });
         setStatus("idle");
       } else {
-        setStatus(body?.limited ? "idle" : "error");
+        setStatus(
+          body?.limited ? "idle" : body?.dailyLimited ? "daily" : "error",
+        );
       }
     } catch {
       setStatus("error");
@@ -109,11 +111,13 @@ export function RetouchBox() {
       <p role="status" className="text-[13px] text-ink-muted empty:hidden">
         {status === "loading"
           ? "AI가 곡 구성을 짜는 중이에요..."
-          : status === "error"
-            ? "편곡을 만들지 못했어요. 횟수는 그대로예요. 다시 시도해 주세요."
-            : used
-              ? "이 곡의 AI 편곡을 다 썼어요."
-              : ""}
+          : status === "daily"
+            ? "오늘 쓸 수 있는 AI 횟수를 다 썼어요. 내일 다시 해 주세요."
+            : status === "error"
+              ? "편곡을 만들지 못했어요. 횟수는 그대로예요. 다시 시도해 주세요."
+              : used
+                ? "이 곡의 AI 편곡을 다 썼어요."
+                : ""}
       </p>
 
       {arrangement && (

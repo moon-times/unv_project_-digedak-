@@ -63,11 +63,18 @@ describe("useAccompanimentSync (#27)", () => {
     expect(song().accompaniment!.drums).toEqual([]);
   });
 
-  test("코드가 비면(다시 녹음) 반주를 지운다", () => {
+  test("코드가 비면(다시 녹음) 반주와 편곡 계획을 지운다", () => {
+    useSongStore.getState().setArrangement({
+      sections: [],
+      endingHit: true,
+      summary: "",
+      enabled: true,
+    });
     useSongStore.getState().setAccompaniment(accompanimentFor(song()));
     renderHook(() => useAccompanimentSync({ create: false }));
     act(() => useSongStore.getState().setChords([]));
     expect(song().accompaniment).toBeUndefined();
+    expect(song().arrangement).toBeUndefined();
   });
 
   test("결과가 같으면 store를 건드리지 않는다", () => {

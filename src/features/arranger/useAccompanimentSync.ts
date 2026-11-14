@@ -36,6 +36,8 @@ export function useAccompanimentSync({ create }: { create: boolean }): void {
     const { song, setAccompaniment } = useSongStore.getState();
     if (song.chords.length === 0) {
       if (song.accompaniment) setAccompaniment(undefined);
+      // 다시 녹음한 새 곡에 예전 곡의 편곡 계획이 붙지 않게 함께 지웁니다.
+      if (song.arrangement) useSongStore.getState().setArrangement(undefined);
       return;
     }
     if (!create && !song.accompaniment) return;

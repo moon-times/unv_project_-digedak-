@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createEmptySong } from "@/types/song";
 
 const supabase = vi.hoisted(() => ({
@@ -23,13 +23,17 @@ const ID = "7d6b2c1e-3f4a-4b5c-8d9e-0a1b2c3d4e5f";
 const song = createEmptySong();
 const draft = { sections: [], endingHit: true, summary: "크게 키웠어요." };
 
-/** rpc 응답: retouch_used는 used, consume_retouch는 consumed */
-function rpcReturns(used: number | null, consumed = true) {
-  supabase.rpc.mockImplementation(async (name: string) =>
-    name === "retouch_used"
-      ? { data: used, error: null }
-      : { data: consumed, error: null },
-  );
+/** rpc 응답: retouch_used는 used, consume_retouch는 consumed, consume_llm_quota는 daily */
+function rpcReturns(used: number | null, consumed = true, daily = true) {
+  supabase.rpc.mockImplementation(async (name: string) => ({
+    data:
+      name === "retouch_used"
+        ? used
+        : name === "consume_llm_quota"
+          ? daily
+          : consumed,
+    error: null,
+  }));
 }
 const post = async (body: unknown) => {
   const response = await POST(
@@ -45,10 +49,15 @@ const consumeCalls = () =>
 
 beforeEach(() => {
   supabase.claims = { sub: "u1" };
+  vi.stubEnv("ANTHROPIC_API_KEY", "test-key");
   rpcReturns(0);
   load.mockReset().mockResolvedValue({ status: "ok", song });
   plan.mockReset().mockResolvedValue(draft);
   vi.spyOn(console, "error").mockImplementation(() => {});
+});
+
+afterEach(() => {
+  vi.unstubAllEnvs();
 });
 
 describe("POST /api/retouch", () => {
@@ -92,6 +101,32 @@ describe("POST /api/retouch", () => {
       remaining: RETOUCH_LIMIT,
     });
     expect(consumeCalls()).toEqual([]);
+  });
+
+  it("LLM 전에 사용자별 하루 한도를 깎고, 다 썼으면 LLM을 부르지 않음", async () => {
+    rpcReturns(0, true, false);
+    expect((await post({ projectId: ID })).json).toEqual({
+      dailyLimited: true,
+      remaining: RETOUCH_LIMIT,
+    });
+    expect(supabase.rpc).toHaveBeenCalledWith("consume_llm_quota", {
+      daily_limit: expect.any(Number),
+    });
+    expect(plan).not.toHaveBeenCalled();
+    expect(consumeCalls()).toEqual([]);
+  });
+
+  it("API 키가 없으면 하루 한도도 깎지 않음", async () => {
+    vi.stubEnv("ANTHROPIC_API_KEY", "");
+    expect((await post({ projectId: ID })).json).toEqual({
+      error: "failed",
+      remaining: RETOUCH_LIMIT,
+    });
+    expect(supabase.rpc).not.toHaveBeenCalledWith(
+      "consume_llm_quota",
+      expect.anything(),
+    );
+    expect(plan).not.toHaveBeenCalled();
   });
 
   it("그새 다른 요청이 마지막 횟수를 썼으면 계획을 버림", async () => {
