@@ -41,8 +41,9 @@ export function MixerPanel() {
   const updateTrack = useSongStore((s) => s.updateTrack);
 
   return (
-    <div className="flex h-full flex-col gap-3 overflow-y-auto">
-      <ul className="flex flex-col gap-3">
+    <div className="flex h-full flex-col gap-2 overflow-y-auto">
+      {/* 목업처럼 트랙마다 한 줄(이름 · dB, 슬라이더, 뮤트 · 솔로). 악기는 고를 수 있는 트랙만 아래 작은 줄 */}
+      <ul className="flex flex-col rounded-xl border-2 border-ink bg-surface px-3">
         {tracks.map((track) => (
           <TrackStrip
             key={track.id}
@@ -51,7 +52,7 @@ export function MixerPanel() {
           />
         ))}
       </ul>
-      <div className="flex items-center gap-2 rounded-xl border-2 border-dashed border-line-dashed px-4 py-3 text-[14px] text-ink-muted">
+      <div className="flex items-center gap-2 rounded-xl border-2 border-dashed border-line-dashed px-3 py-2 text-[13px] text-ink-muted">
         울림 (리버브)
         <Soon />
       </div>
@@ -71,49 +72,31 @@ function TrackStrip({
   const choices = INSTRUMENT_CHOICES[track.id];
 
   return (
-    <li className="flex flex-col gap-2 rounded-xl border-2 border-ink bg-surface px-4 py-3">
+    <li className="flex flex-col gap-1 border-b border-line py-1.5 last:border-b-0">
       <div className="flex items-center gap-2">
         <span
           aria-hidden
           className="size-3 shrink-0 rounded-full border border-ink"
           style={{ backgroundColor: TRACK_DOT_COLORS[track.id] }}
         />
-        <label htmlFor={sliderId} className="flex-1 text-[15px] font-semibold">
-          {label}
-        </label>
-        <span className="text-[14px] text-ink-muted tabular-nums">
-          {formatDb(track.volume)}
-        </span>
-      </div>
-      <input
-        id={sliderId}
-        type="range"
-        min={VOLUME_MIN_DB}
-        max={VOLUME_MAX_DB}
-        step={1}
-        value={track.volume}
-        onChange={(e) => onChange({ volume: Number(e.target.value) })}
-        className="w-full accent-primary"
-      />
-      {choices && (
-        <select
-          aria-label={`${label} 악기`}
-          value={track.instrument}
-          onChange={(e) => onChange({ instrument: e.target.value })}
-          className="min-h-11 rounded-full border-2 border-ink bg-surface px-3 text-[14px]"
-        >
-          {/* 목록에 없는 악기로 저장된 곡도 그 이름 그대로 보여 줍니다. */}
-          {!(track.instrument in choices) && (
-            <option value={track.instrument}>{track.instrument}</option>
-          )}
-          {Object.entries(choices).map(([name, text]) => (
-            <option key={name} value={name}>
-              {text}
-            </option>
-          ))}
-        </select>
-      )}
-      <div className="flex gap-2">
+        <div className="flex w-14 shrink-0 flex-col leading-tight">
+          <label htmlFor={sliderId} className="text-[14px] font-semibold">
+            {label}
+          </label>
+          <span className="text-[12px] text-ink-muted tabular-nums">
+            {formatDb(track.volume)}
+          </span>
+        </div>
+        <input
+          id={sliderId}
+          type="range"
+          min={VOLUME_MIN_DB}
+          max={VOLUME_MAX_DB}
+          step={1}
+          value={track.volume}
+          onChange={(e) => onChange({ volume: Number(e.target.value) })}
+          className="min-w-0 flex-1 accent-primary"
+        />
         <ToggleButton
           pressed={track.muted}
           label={`${label} 뮤트`}
@@ -129,6 +112,24 @@ function TrackStrip({
           솔로
         </ToggleButton>
       </div>
+      {choices && (
+        <select
+          aria-label={`${label} 악기`}
+          value={track.instrument}
+          onChange={(e) => onChange({ instrument: e.target.value })}
+          className="ml-5 h-7 w-fit max-w-full rounded-full border-2 border-ink bg-surface px-2 text-[13px]"
+        >
+          {/* 목록에 없는 악기로 저장된 곡도 그 이름 그대로 보여 줍니다. */}
+          {!(track.instrument in choices) && (
+            <option value={track.instrument}>{track.instrument}</option>
+          )}
+          {Object.entries(choices).map(([name, text]) => (
+            <option key={name} value={name}>
+              {text}
+            </option>
+          ))}
+        </select>
+      )}
     </li>
   );
 }
@@ -150,7 +151,7 @@ function ToggleButton({
       aria-pressed={pressed}
       aria-label={label}
       onClick={onClick}
-      className={`flex min-h-11 flex-1 items-center justify-center rounded-full border-2 border-ink text-[14px] font-semibold ${
+      className={`flex size-9 shrink-0 items-center justify-center rounded-full border-2 border-ink text-[12px] font-semibold ${
         pressed ? "bg-ink text-surface" : "bg-surface"
       }`}
     >
