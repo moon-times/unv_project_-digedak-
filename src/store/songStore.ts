@@ -6,6 +6,7 @@ import { persist } from "zustand/middleware";
 import {
   createEmptySong,
   type Accompaniment,
+  type ArrangementPlan,
   type Chord,
   type Note,
   type SongState,
@@ -56,7 +57,9 @@ type SongStore = {
   setMelody: (melody: Note[]) => void;
   setChords: (chords: Chord[]) => void;
   setExplanation: (explanation: string) => void;
-  setAccompaniment: (accompaniment: Accompaniment) => void;
+  /** undefined면 반주를 지웁니다 (코드가 비었을 때, #27) */
+  setAccompaniment: (accompaniment: Accompaniment | undefined) => void;
+  setArrangement: (arrangement: ArrangementPlan | undefined) => void;
   updateTrack: (id: TrackId, patch: Partial<Omit<Track, "id">>) => void;
   setRecording: (recording: SongState["recording"]) => void;
 
@@ -116,6 +119,7 @@ export const useSongStore = create<SongStore>()(
         setChords: (chords) => updateSong({ chords }),
         setExplanation: (explanation) => updateSong({ explanation }),
         setAccompaniment: (accompaniment) => updateSong({ accompaniment }),
+        setArrangement: (arrangement) => updateSong({ arrangement }),
         updateTrack: (id, patch) =>
           set((state) => ({
             song: {

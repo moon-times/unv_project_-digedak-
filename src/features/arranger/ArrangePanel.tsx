@@ -19,7 +19,7 @@ const STYLE_DESCRIPTIONS: Record<Style, string> = {
 };
 
 export function ArrangePanel() {
-  useAccompanimentSync();
+  useAccompanimentSync({ create: true });
   const style = useSongStore((s) => s.song.style);
   const bpm = useSongStore((s) => s.song.bpm);
   const setStyle = useSongStore((s) => s.setStyle);

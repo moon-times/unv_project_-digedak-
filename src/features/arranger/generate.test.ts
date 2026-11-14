@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { NoteSchema } from "@/lib/schemas";
-import { STYLES, type Chord, type Note } from "@/types/song";
+import {
+  STYLES,
+  type ArrangementPlan,
+  type ArrangementSection,
+  type Chord,
+  type Note,
+} from "@/types/song";
 import { generateAccompaniment } from "./generate";
 import { DRUM } from "./patterns";
 
@@ -159,5 +165,177 @@ describe("기타", () => {
   it("발라드는 한 번에 한두 줄만 뜯는다", () => {
     for (let step = 0; step < 64; step += 4)
       expect(at(guitarOf("ballad"), step).length).toBeLessThanOrEqual(2);
+  });
+});
+
+describe("편곡 계획 (명세 08)", () => {
+  const section = (
+    startBar: number,
+    endBar: number,
+    patch: Partial<ArrangementSection> = {},
+  ): ArrangementSection => ({
+    startBar,
+    endBar,
+    role: "verse",
+    energy: 4,
+    drums: "normal",
+    bass: "normal",
+    keys: "normal",
+    guitar: "normal",
+    fillAtEnd: false,
+    crashAtStart: false,
+    ...patch,
+  });
+  const plan = (
+    sections: ArrangementSection[],
+    patch: Partial<ArrangementPlan> = {},
+  ): ArrangementPlan => ({
+    sections,
+    endingHit: false,
+    summary: "",
+    enabled: true,
+    ...patch,
+  });
+  const inBar = (notes: Note[], bar: number, steps = 16) =>
+    notes.filter((n) => n.start >= bar * steps && n.start < (bar + 1) * steps);
+  const withPlan = (
+    p: ArrangementPlan,
+    style: "pop" | "rock" | "ballad" = "pop",
+  ) => generateAccompaniment(C_F_G_C, style, 100, { plan: p });
+
+  it("모두 normal · 세기 4면 계획 없는 반주와 같다 (크래시 규칙만 계획을 따름)", () => {
+    const base = generateAccompaniment(C_F_G_C, "pop", 100);
+    const planned = withPlan(plan([section(0, 4, { crashAtStart: true })]));
+    expect(planned.bass).toEqual(base.bass);
+    expect(planned.keys).toEqual(base.keys);
+    expect(planned.guitar).toEqual(base.guitar);
+    expect(planned.drums.filter((n) => n.pitch !== DRUM.crash)).toEqual(
+      base.drums.filter((n) => n.pitch !== DRUM.crash),
+    );
+  });
+
+  it("enabled: false면 계획을 무시한다", () => {
+    const off = plan([section(0, 4, { drums: "none" })], {
+      enabled: false,
+      endingHit: true,
+    });
+    expect(withPlan(off)).toEqual(generateAccompaniment(C_F_G_C, "pop", 100));
+  });
+
+  it("구간 경계마다 설정이 바뀐다: 쉼 → 길게 → 옥타브", () => {
+    const result = withPlan(
+      plan([
+        section(0, 1, {
+          drums: "none",
+          bass: "rest",
+          keys: "rest",
+          guitar: "rest",
+        }),
+        section(1, 2, { bass: "long", keys: "pad" }),
+        section(2, 4, { bass: "octave", drums: "double", guitar: "power" }),
+      ]),
+    );
+    for (const track of [result.drums, result.bass, result.keys, result.guitar])
+      expect(inBar(track, 0)).toEqual([]);
+    expect(inBar(result.bass, 1)).toHaveLength(1);
+    expect(inBar(result.bass, 1)[0].duration).toBe(16);
+    expect(new Set(inBar(result.keys, 1).map((n) => n.start))).toEqual(
+      new Set([16]),
+    );
+    const octave = inBar(result.bass, 2);
+    expect(octave).toHaveLength(8);
+    expect(octave[1].pitch - octave[0].pitch).toBe(12);
+    const kicks = inBar(result.drums, 2).filter((n) => n.pitch === DRUM.kick);
+    for (const beat of [32, 36, 40, 44])
+      expect(kicks.some((n) => n.start === beat)).toBe(true);
+    expect(
+      inBar(result.drums, 2).filter((n) => n.pitch === DRUM.closedHat),
+    ).toHaveLength(16);
+    expect(inBar(result.guitar, 2).every((n) => n.duration === 2)).toBe(true);
+  });
+
+  it("half: 킥 첫 박 · 스네어 3박, 하이햇 4분", () => {
+    const bar = inBar(
+      withPlan(plan([section(0, 4, { drums: "half" })])).drums,
+      0,
+    );
+    expect(
+      bar.filter((n) => n.pitch === DRUM.kick).map((n) => n.start),
+    ).toEqual([0]);
+    expect(
+      bar.filter((n) => n.pitch === DRUM.snare).map((n) => n.start),
+    ).toEqual([8]);
+    expect(bar.filter((n) => n.pitch === DRUM.closedHat)).toHaveLength(4);
+  });
+
+  it("세기가 낮을수록 음이 약하다", () => {
+    const soft = withPlan(plan([section(0, 4, { energy: 1 })]));
+    const loud = withPlan(plan([section(0, 4, { energy: 5 })]));
+    expect(soft.bass[0].velocity).toBeLessThan(loud.bass[0].velocity);
+    for (const note of loud.drums) expect(note.velocity).toBeLessThanOrEqual(1);
+  });
+
+  it("필인은 구간 마지막 마디 끝 1박을 탐으로 바꾸고, 크래시는 구간 첫 박", () => {
+    const result = withPlan(
+      plan([
+        section(0, 2, { fillAtEnd: true }),
+        section(2, 4, { crashAtStart: true }),
+      ]),
+    );
+    const fill = result.drums.filter((n) => n.start >= 28 && n.start < 32);
+    expect(fill.map((n) => n.start)).toEqual([28, 29, 30, 31]);
+    expect(
+      fill.every((n) => n.pitch !== DRUM.kick && n.pitch !== DRUM.closedHat),
+    ).toBe(true);
+    expect(fill[3].velocity).toBeGreaterThan(fill[0].velocity);
+    // 첫 구간 첫 마디(필인 아님)는 그대로
+    expect(
+      result.drums.some((n) => n.start === 12 && n.pitch === DRUM.snare),
+    ).toBe(true);
+    const crashes = result.drums
+      .filter((n) => n.pitch === DRUM.crash)
+      .map((n) => n.start);
+    expect(crashes).toEqual([32]);
+  });
+
+  it("끝 한 방: 마지막 마디는 첫 박에만 치고 길게", () => {
+    const last = (notes: Note[]) => inBar(notes, 3);
+    const result = withPlan(plan([section(0, 4)], { endingHit: true }));
+    for (const track of [result.drums, result.bass, result.keys, result.guitar])
+      expect(last(track).every((n) => n.start === 48)).toBe(true);
+    expect(
+      last(result.drums)
+        .map((n) => n.pitch)
+        .sort(),
+    ).toEqual([DRUM.kick, DRUM.crash]);
+    expect(last(result.bass)[0].duration).toBe(16);
+  });
+
+  it("3/4박자에서도 마디 밖 음이 없다", () => {
+    const chords = [0, 1, 2, 3].map((bar) => ({
+      symbol: "C",
+      start: bar * 12,
+      duration: 12,
+    }));
+    const result = generateAccompaniment(chords, "rock", 100, {
+      stepsPerBar: 12,
+      plan: plan(
+        [
+          section(0, 2, {
+            drums: "double",
+            bass: "octave",
+            keys: "arpeggio",
+            fillAtEnd: true,
+          }),
+          section(2, 4, { guitar: "arpeggio" }),
+        ],
+        { endingHit: true },
+      ),
+    });
+    for (const track of [result.drums, result.bass, result.keys, result.guitar])
+      for (const note of track) {
+        const bar = Math.floor(note.start / 12);
+        expect(note.start + note.duration).toBeLessThanOrEqual((bar + 1) * 12);
+      }
   });
 });

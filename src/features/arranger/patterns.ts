@@ -1,6 +1,6 @@
 // 장르별 반주 패턴. 4/4박자 한 마디(16 step, 1 step = 16분음표) 기준입니다.
 // 다른 박자에서는 마디 길이 안에 들어가는 이벤트만 씁니다 (generate.ts).
-import type { Style } from "@/types/song";
+import type { ArrangementSection, Style } from "@/types/song";
 
 /** GM 드럼 음 번호. 타임라인 드럼 줄은 이 음높이로 위아래가 나뉩니다. */
 export const DRUM = {
@@ -10,6 +10,11 @@ export const DRUM = {
   closedHat: 42,
   openHat: 46,
   crash: 49,
+  // 필인용 탐 (높은 것 → 낮은 것)
+  tomHighest: 50,
+  tomHigh: 48,
+  tomMid: 45,
+  tomLow: 43,
 } as const;
 
 export type DrumHit = { step: number; pitch: number; velocity: number };
@@ -167,3 +172,90 @@ export const STYLE_PATTERNS: Record<Style, StylePattern> = {
     ),
   },
 };
+
+/** 편곡 계획의 세기(1~5)마다 곱할 음 세기 배율 */
+export const ENERGY_GAIN = [0.6, 0.75, 0.9, 1, 1.1] as const;
+
+const BEATS = [0, 4, 8, 12];
+
+/**
+ * 편곡 계획 구간 설정으로 이번 마디에 쓸 패턴을 만듭니다 (명세 08 design §3).
+ * "normal"은 장르 패턴 그대로이고, 나머지는 장르와 상관없이 같은 모양입니다.
+ */
+export function patternFor(
+  base: StylePattern,
+  section: ArrangementSection,
+  barSteps: number,
+): StylePattern {
+  const drums =
+    section.drums === "none"
+      ? { drums: [], hatInterval: 0 }
+      : section.drums === "half"
+        ? {
+            drums: [hit(0, DRUM.kick, 0.85), hit(8, DRUM.snare, 0.8)],
+            hatInterval: 4,
+          }
+        : section.drums === "double"
+          ? {
+              drums: [
+                ...base.drums,
+                ...BEATS.filter(
+                  (step) =>
+                    !base.drums.some(
+                      (d) => d.step === step && d.pitch === DRUM.kick,
+                    ),
+                ).map((step) => hit(step, DRUM.kick, 0.8)),
+              ],
+              hatInterval: 1,
+            }
+          : { drums: base.drums, hatInterval: base.hatInterval };
+
+  const bass: BassHit[] =
+    section.bass === "rest"
+      ? []
+      : section.bass === "long"
+        ? [{ step: 0, duration: barSteps, tone: "root", velocity: 0.8 }]
+        : section.bass === "octave"
+          ? Array.from({ length: 8 }, (_, i) => ({
+              step: i * 2,
+              duration: 2,
+              tone: (i % 2 === 0 ? "root" : "octave") as BassTone,
+              velocity: i % 2 === 0 ? 0.85 : 0.7,
+            }))
+          : base.bass;
+
+  const keys: KeysHit[] =
+    section.keys === "rest"
+      ? []
+      : section.keys === "pad"
+        ? [{ step: 0, duration: barSteps, voices: "chord", velocity: 0.55 }]
+        : section.keys === "arpeggio"
+          ? STYLE_PATTERNS.ballad.keys
+          : base.keys;
+
+  const guitar =
+    section.guitar === "rest"
+      ? []
+      : section.guitar === "arpeggio"
+        ? STYLE_PATTERNS.ballad.guitar
+        : section.guitar === "power"
+          ? STYLE_PATTERNS.rock.guitar
+          : base.guitar;
+
+  return { ...base, ...drums, bass, keys, guitar };
+}
+
+/** 곡 마지막 마디: 첫 박에 모두 한 번 치고 길게 울립니다. 크래시는 generate.ts가 넣습니다. */
+export function endingPattern(
+  base: StylePattern,
+  barSteps: number,
+): StylePattern {
+  return {
+    ...base,
+    drums: [hit(0, DRUM.kick, 1)],
+    hatInterval: 0,
+    bass: [{ step: 0, duration: barSteps, tone: "root", velocity: 0.9 }],
+    keys: [{ step: 0, duration: barSteps, voices: "chord", velocity: 0.75 }],
+    guitar: [strum(0, barSteps, "down", 0.8)],
+  };
+}

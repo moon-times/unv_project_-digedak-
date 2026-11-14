@@ -4,9 +4,16 @@
 // 이 파일을 바꾸는 PR은 설명에 변경 사항을 적고 팀원 전체를 리뷰어로 지정합니다.
 import { z } from "zod";
 import {
+  BASS_FEELS,
+  DRUM_FEELS,
+  GUITAR_FEELS,
+  KEYS_FEELS,
+  SECTION_ROLES,
   STYLES,
   TRACK_IDS,
   type AnalysisResult,
+  type ArrangementPlan,
+  type ArrangementSection,
   type Chord,
   type Note,
   type SongState,
@@ -48,6 +55,31 @@ export const TrackSchema: z.ZodType<Track> = z.object({
     .optional(),
 });
 
+export const ArrangementSectionSchema: z.ZodType<ArrangementSection> = z.object(
+  {
+    startBar: step,
+    endBar: length,
+    role: z.enum(SECTION_ROLES),
+    energy: z.literal([1, 2, 3, 4, 5]),
+    drums: z.enum(DRUM_FEELS),
+    bass: z.enum(BASS_FEELS),
+    keys: z.enum(KEYS_FEELS),
+    guitar: z.enum(GUITAR_FEELS),
+    fillAtEnd: z.boolean(),
+    crashAtStart: z.boolean(),
+  },
+);
+
+/** LLM이 만드는 부분(enabled 제외). /api/retouch가 응답 검증에 씁니다. */
+export const ArrangementDraftSchema = z.object({
+  sections: z.array(ArrangementSectionSchema).max(64),
+  endingHit: z.boolean(),
+  summary: z.string().max(400),
+});
+
+export const ArrangementPlanSchema: z.ZodType<ArrangementPlan> =
+  ArrangementDraftSchema.extend({ enabled: z.boolean() });
+
 export const SongStateSchema: z.ZodType<SongState> = z.object({
   version: z.literal(1),
   title: z.string(),
@@ -70,6 +102,7 @@ export const SongStateSchema: z.ZodType<SongState> = z.object({
       guitar: z.array(NoteSchema).default([]),
     })
     .optional(),
+  arrangement: ArrangementPlanSchema.optional(),
   // 트랙이 늘어나기 전에 저장된 곡은 빠진 트랙을 기본값으로 채웁니다.
   tracks: z.array(TrackSchema).transform(withAllTracks),
   recording: z
