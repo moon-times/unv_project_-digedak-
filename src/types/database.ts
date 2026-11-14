@@ -62,6 +62,29 @@ export type Database = {
         }
         Relationships: []
       }
+      retouch_usage: {
+        Row: {
+          count: number
+          project_id: string
+        }
+        Insert: {
+          count?: number
+          project_id: string
+        }
+        Update: {
+          count?: number
+          project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "retouch_usage_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
