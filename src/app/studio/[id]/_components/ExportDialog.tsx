@@ -239,7 +239,10 @@ function GuestExport() {
           로그인하고 저장하기
         </Link>
         <form method="dialog">
-          <button className={`${SECONDARY} w-full`}>계속 편집하기</button>
+          {/* 목업처럼 글자 링크 모양. 누르는 높이는 44px 유지 */}
+          <button className="min-h-11 w-full text-[14px] font-semibold underline underline-offset-4">
+            계속 편집하기
+          </button>
         </form>
       </div>
     </>

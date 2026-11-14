@@ -1,11 +1,17 @@
 // 랜딩 3단계 카드용 선 아이콘. 스튜디오 아이콘(studio/[id]/_components/icons.tsx)과 같은 선 규칙입니다.
 import type { ReactNode } from "react";
 
-function LineIcon({ children }: { children: ReactNode }) {
+function LineIcon({
+  children,
+  size = 40,
+}: {
+  children: ReactNode;
+  size?: number;
+}) {
   return (
     <svg
-      width={40}
-      height={40}
+      width={size}
+      height={size}
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
@@ -19,8 +25,8 @@ function LineIcon({ children }: { children: ReactNode }) {
   );
 }
 
-export const MicIcon = () => (
-  <LineIcon>
+export const MicIcon = ({ size }: { size?: number }) => (
+  <LineIcon size={size}>
     <rect x="9" y="3" width="6" height="11" rx="3" />
     <path d="M5 11a7 7 0 0 0 14 0" />
     <path d="M12 18v3" />

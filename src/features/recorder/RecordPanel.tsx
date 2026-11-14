@@ -238,18 +238,46 @@ function LiveDisplay({ live, active }: { live: LiveStore; active: boolean }) {
     live.get,
     live.get,
   );
+  const seconds = active ? elapsed : 0;
+  // 목업: 라벨 두 개("녹음한 시간" · "지금 부르는 음")와 녹음 색 진행 막대
   return (
-    <div className="flex w-full items-center justify-between gap-3">
-      <span className="text-[19px] font-bold tabular-nums">
-        {formatSeconds(active ? elapsed : 0)} /{" "}
-        {formatSeconds(MAX_RECORD_SECONDS)}
-      </span>
-      <span
-        aria-label="지금 부르는 음"
-        className="flex h-11 min-w-16 items-center justify-center rounded-xl border-2 border-ink bg-surface px-3 font-display text-[22px]"
+    <div className="flex w-full flex-col gap-2">
+      <div className="flex items-end justify-between gap-3">
+        <div className="flex flex-col">
+          <span aria-hidden className="text-[13px] text-ink-muted">
+            녹음한 시간
+          </span>
+          <span className="text-[19px] font-bold tabular-nums">
+            {formatSeconds(seconds)} / {formatSeconds(MAX_RECORD_SECONDS)}
+          </span>
+        </div>
+        <div className="flex flex-col items-end">
+          <span aria-hidden className="text-[13px] text-ink-muted">
+            지금 부르는 음
+          </span>
+          <span
+            aria-label="지금 부르는 음"
+            className="flex h-11 min-w-16 items-center justify-center rounded-xl border-2 border-ink bg-surface px-3 font-display text-[22px]"
+          >
+            {active && pitch !== null ? noteName(pitch) : "–"}
+          </span>
+        </div>
+      </div>
+      <div
+        role="progressbar"
+        aria-label="녹음한 시간"
+        aria-valuemin={0}
+        aria-valuemax={MAX_RECORD_SECONDS}
+        aria-valuenow={Math.floor(seconds)}
+        className="h-2 overflow-hidden rounded-full border border-ink bg-surface"
       >
-        {active && pitch !== null ? noteName(pitch) : "–"}
-      </span>
+        <div
+          className="h-full bg-record"
+          style={{
+            width: `${Math.min(100, (seconds / MAX_RECORD_SECONDS) * 100)}%`,
+          }}
+        />
+      </div>
     </div>
   );
 }

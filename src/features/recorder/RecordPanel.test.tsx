@@ -62,6 +62,13 @@ async function record() {
 }
 
 describe("RecordPanel", () => {
+  test("녹음 전에는 시간 막대가 0 / 30초", () => {
+    render(<RecordPanel />);
+    const bar = screen.getByRole("progressbar", { name: "녹음한 시간" });
+    expect(bar.getAttribute("aria-valuenow")).toBe("0");
+    expect(bar.getAttribute("aria-valuemax")).toBe("30");
+  });
+
   test("녹음 시작 → 재생을 멈추고 카운트인 4박 · 지금 BPM으로 엔진을 연다", async () => {
     render(<RecordPanel />);
     await record();
