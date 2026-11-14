@@ -57,6 +57,7 @@ async function tryUpload(isMember: boolean): Promise<void> {
   } finally {
     uploading = false;
     if (pending === job) pending = null;
+    // shortcut: 다시 시도까지 실패해도 보관본을 지워 그 원본은 잃음, 실패가 잦으면 보관본을 남기고 다음 마운트 때 다시 올리기
     forgetDraft();
   }
   // 올리는 동안 새 녹음이 왔으면 이어서 올립니다.
@@ -71,8 +72,9 @@ export function useRecordingUpload(isMember: boolean): void {
     if (pending === null && useSongStore.getState().projectId === null) {
       void loadRecordingDraft().then((blob) => {
         if (!blob || pending !== null) return;
-        // 그새 다른 곡이 열렸으면 이 원본은 그 곡 것이 아닙니다.
-        if (useSongStore.getState().projectId !== null) {
+        // 그새 다른 곡이 열렸거나, 게스트 곡 보관본이 없으면(먼저 저장됨 · 사이트 데이터 일부 삭제) 이 원본은 지금 곡 것이 아닙니다.
+        const { projectId, song } = useSongStore.getState();
+        if (projectId !== null || song.melody.length === 0) {
           void clearRecordingDraft();
           return;
         }

@@ -34,6 +34,7 @@ const draft = vi.hoisted(() => {
 vi.mock("@/lib/recordingDraft", () => draft);
 
 const blob = new Blob(["x"], { type: "audio/webm" });
+const melodyNote = { pitch: 60, start: 0, duration: 4, velocity: 0.8 };
 /** 비동기 업로드가 끝날 때까지 기다립니다 */
 const settle = () => vi.advanceTimersByTimeAsync(0);
 
@@ -138,6 +139,7 @@ describe("곡 id 없는 원본의 IndexedDB 보관 (명세 06)", () => {
 
   it("새 탭 · 새로고침(메모리 없음)이면 보관본을 꺼내 처음 저장 때 올린다", async () => {
     draft.state.value = blob;
+    useSongStore.getState().setMelody([melodyNote]);
     renderHook(() => useRecordingUpload(true));
     await settle();
 
@@ -147,8 +149,20 @@ describe("곡 id 없는 원본의 IndexedDB 보관 (명세 06)", () => {
     expect(draft.state.value).toBeNull();
   });
 
+  it("게스트 곡 보관본이 비어 있으면(멜로디 없음) 보관본을 붙이지 않고 지운다", async () => {
+    draft.state.value = blob;
+    renderHook(() => useRecordingUpload(true));
+    await settle();
+
+    useSongStore.getState().setProjectId("unrelated");
+    await settle();
+    expect(upload).not.toHaveBeenCalled();
+    expect(draft.state.value).toBeNull();
+  });
+
   it("꺼낸 뒤 저장된 다른 곡이 열리면 버리고 지운다", async () => {
     draft.state.value = blob;
+    useSongStore.getState().setMelody([melodyNote]);
     renderHook(() => useRecordingUpload(true));
     await settle();
 
