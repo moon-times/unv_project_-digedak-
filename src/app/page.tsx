@@ -31,8 +31,9 @@ export default function Home() {
           <div className="mt-8 flex flex-wrap gap-3">
             <Link
               href="/studio/new"
-              className="flex min-h-[52px] items-center rounded-full border-2 border-ink bg-primary px-6 text-[17px] font-bold text-on-primary shadow-[0_4px_0_var(--color-ink)]"
+              className="flex min-h-[52px] items-center gap-2 rounded-full border-2 border-ink bg-primary px-6 text-[17px] font-bold text-on-primary shadow-[0_4px_0_var(--color-ink)]"
             >
+              <MicIcon size={20} />
               바로 만들어보기
             </Link>
             <AuthSlot variant="hero" />
@@ -48,7 +49,7 @@ export default function Home() {
           width={340}
           height={340}
           loading="eager"
-          className="mx-auto w-[220px] md:w-[340px]"
+          className="mx-auto w-[220px] md:-mb-10 md:w-[340px] md:self-end"
         />
       </section>
 
