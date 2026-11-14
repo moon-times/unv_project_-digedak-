@@ -2,6 +2,7 @@
 
 // 스튜디오 가운데의 고정 타임라인. 보정 단계(editable)에서는 멜로디 줄을 편집합니다(MelodyEditor).
 // 위에서부터 마디 번호, 코드, 멜로디 피아노롤, 드럼 · 베이스 · 건반 · 기타 줄입니다.
+// 보정 단계에서는 코드 줄의 코드를 눌러 다른 코드로 바꿀 수도 있습니다(ChordEditBar).
 // 색은 globals.css의 timeline · track 토큰을 씁니다 (docs/design/README.md "타임라인" · "트랙 색").
 import {
   useEffect,
@@ -16,6 +17,8 @@ import { stepsPerBar } from "@/lib/transport";
 import { useSongStore } from "@/store/songStore";
 import type { Note, Step } from "@/types/song";
 import { snapNotes } from "@/features/recorder/quantize";
+import { ChordEditBar } from "./ChordEditBar";
+import { replaceChord } from "./chordEdit";
 import { deleteNote, sameNote } from "./edit";
 import { EditBar, EditTools, MelodyEditor, VelocityLane } from "./MelodyEditor";
 import { useMelodyHistory } from "./useMelodyHistory";
@@ -114,6 +117,23 @@ export function Timeline({
   const history = useMelodyHistory();
   useUndoShortcuts(editable, history);
 
+  // 고르고 있는 코드(코드 목록 안 위치). 음과 코드는 한 번에 하나만 고릅니다.
+  const keyName = useSongStore((s) => s.song.key);
+  const [chordIndex, setChordIndex] = useState<number | null>(null);
+  if (!editable && chordIndex !== null) setChordIndex(null);
+  const selectedChord =
+    editable && chordIndex !== null && chordIndex < song.chords.length
+      ? chordIndex
+      : null;
+  const selectNote = (index: number | null) => {
+    setSelected(index);
+    if (index !== null) setChordIndex(null);
+  };
+  const selectChord = (index: number) => {
+    setChordIndex(index);
+    setSelected(null);
+  };
+
   const timeline = (
     <section
       ref={sectionRef}
@@ -167,19 +187,36 @@ export function Timeline({
           {song.chords.length === 0 ? (
             <EmptyLane text="② 분석하면 마디마다 코드가 붙어요" />
           ) : (
-            song.chords.map((chord) => (
-              <div
-                key={chord.start}
-                data-chord
-                className="absolute top-1 bottom-1 truncate rounded-[3px] border border-ink bg-linear-to-b from-track-chord-from to-track-chord-to px-1 text-xs leading-[22px] font-semibold text-ink"
-                style={{
-                  left: chord.start * stepWidth,
-                  width: chord.duration * stepWidth,
-                }}
-              >
-                {chord.symbol}
-              </div>
-            ))
+            song.chords.map((chord, i) => {
+              const className = `absolute top-1 bottom-1 truncate rounded-[3px] border border-ink bg-linear-to-b from-track-chord-from to-track-chord-to px-1 text-left text-xs leading-[22px] font-semibold text-ink ${selectedChord === i ? "outline-2 outline-offset-1 outline-timeline-text" : ""}`;
+              const style = {
+                left: chord.start * stepWidth,
+                width: chord.duration * stepWidth,
+              };
+              return editable ? (
+                <button
+                  key={chord.start}
+                  type="button"
+                  data-chord
+                  aria-label={`코드 ${i + 1}번째: ${chord.symbol}`}
+                  aria-pressed={selectedChord === i}
+                  className={`${className} cursor-pointer`}
+                  style={style}
+                  onClick={() => selectChord(i)}
+                >
+                  {chord.symbol}
+                </button>
+              ) : (
+                <div
+                  key={chord.start}
+                  data-chord
+                  className={className}
+                  style={style}
+                >
+                  {chord.symbol}
+                </div>
+              );
+            })
           )}
         </Row>
 
@@ -200,7 +237,7 @@ export function Timeline({
               grid={snapGrid}
               barSteps={barSteps}
               look={`${MELODY_NOTE.fill} ${MELODY_NOTE.edge}`}
-              selection={{ selected, setSelected }}
+              selection={{ selected, setSelected: selectNote }}
               onChange={history.commit}
             />
           ) : song.melody.length === 0 ? (
@@ -294,15 +331,32 @@ export function Timeline({
       >
         {tools}
       </EditTools>
-      <EditBar
-        note={selected === null ? null : song.melody[selected]}
-        barSteps={barSteps}
-        onDelete={() => {
-          if (selected === null) return;
-          history.commit(deleteNote(song.melody, selected));
-          setSelected(null);
-        }}
-      />
+      {selectedChord !== null ? (
+        <ChordEditBar
+          // 다른 코드를 고르면 입력 칸을 비웁니다.
+          key={selectedChord}
+          chord={song.chords[selectedChord]}
+          keyName={keyName}
+          melody={song.melody}
+          barSteps={barSteps}
+          onChange={(symbol) => {
+            const next = replaceChord(song.chords, selectedChord, symbol);
+            // 같은 코드를 다시 고르면 곡을 건드리지 않습니다 (setChords는 dirty를 켜서 자동 저장이 돕니다).
+            if (next !== song.chords) useSongStore.getState().setChords(next);
+          }}
+          onClose={() => setChordIndex(null)}
+        />
+      ) : (
+        <EditBar
+          note={selected === null ? null : song.melody[selected]}
+          barSteps={barSteps}
+          onDelete={() => {
+            if (selected === null) return;
+            history.commit(deleteNote(song.melody, selected));
+            setSelected(null);
+          }}
+        />
+      )}
       {timeline}
     </div>
   );
