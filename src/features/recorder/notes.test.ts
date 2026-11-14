@@ -85,12 +85,18 @@ describe("framesToNotes", () => {
     expect(framesToNotes(frames).map((n) => n.pitch)).toEqual([60]);
   });
 
-  test("세기는 프레임 음량의 평균, 음량이 없으면 기본값", () => {
-    const frames = hum([C4, 0.2]).map((f, i) => ({
+  test("세기는 음마다 음량 평균, 가장 큰 음이 0.9가 되게 같은 비율로 키움 (마이크가 작아도 들리게)", () => {
+    // 작은 마이크: C4 평균 0.1, E4 평균 0.05 → 0.9, 0.45 (강약 2:1은 그대로)
+    const frames = hum([C4, 0.2], [null, 0.1], [E4, 0.2]).map((f, i) => ({
       ...f,
-      volume: i % 2 ? 0.4 : 0.6,
+      volume: f.time < 0.2 ? (i % 2 ? 0.08 : 0.12) : 0.05,
     }));
-    expect(framesToNotes(frames)[0].velocity).toBeCloseTo(0.5);
+    const [c, e] = framesToNotes(frames);
+    expect(c.velocity).toBeCloseTo(0.9);
+    expect(e.velocity).toBeCloseTo(0.45);
+  });
+
+  test("음량이 없으면 기본값 0.8", () => {
     expect(framesToNotes(hum([C4, 0.2]))[0].velocity).toBe(0.8);
   });
 });
