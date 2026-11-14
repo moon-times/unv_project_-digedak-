@@ -68,6 +68,11 @@ export type Database = {
     }
     Functions: {
       consume_llm_quota: { Args: { daily_limit: number }; Returns: boolean }
+      consume_retouch: {
+        Args: { max_count: number; target: string }
+        Returns: boolean
+      }
+      retouch_used: { Args: { target: string }; Returns: number }
     }
     Enums: {
       [_ in never]: never
