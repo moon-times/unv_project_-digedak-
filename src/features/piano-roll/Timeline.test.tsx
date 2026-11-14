@@ -126,18 +126,75 @@ describe("Timeline", () => {
     expect(playhead?.style.left).toBe(`${LABEL_WIDTH + 8 * STEP_WIDTH}px`);
   });
 
-  test("음표가 낮게 그려지는 줄은 테두리를 빼서 색이 보이게 한다", () => {
+  test("반주 음표는 음역이 넓어도 막대로 보이게 최소 6px, 줄 밖으로 나가지 않는다", () => {
     useSongStore.getState().setAccompaniment({
       drums: [],
-      bass: [note(40, 0), note(43, 8)], // 음역 좁음 → 음표가 충분히 높음
-      keys: [note(48, 0), note(84, 8)], // 3옥타브 → 음표 1px대
+      bass: [],
+      keys: [note(48, 0), note(84, 8)], // 3옥타브 → 음 칸 1px대
       guitar: [],
     });
     const { container } = render(<Timeline />);
-    const [bass] = lane(container, "bass").querySelectorAll("[data-note]");
-    const [keys] = lane(container, "keys").querySelectorAll("[data-note]");
-    expect(bass.className).toContain("border-track-bass-border");
-    expect(keys.className).not.toContain("border-track-keys-border");
+    for (const el of lane(container, "keys").querySelectorAll<HTMLElement>(
+      "[data-note]",
+    )) {
+      const top = parseFloat(el.style.top);
+      const height = parseFloat(el.style.height);
+      expect(height).toBe(6);
+      expect(top).toBeGreaterThanOrEqual(0);
+      expect(top + height).toBeLessThanOrEqual(48);
+      expect(el.className).toContain("border-track-keys-border");
+    }
+  });
+
+  test("드럼은 악기별 세 칸(하이햇 위 · 스네어 가운데 · 킥 아래)에 그린다", () => {
+    useSongStore.getState().setAccompaniment({
+      drums: [note(42, 0), note(38, 4), note(36, 8)],
+      bass: [],
+      keys: [],
+      guitar: [],
+    });
+    const { container } = render(<Timeline />);
+    const rows = [
+      ...lane(container, "drums").querySelectorAll<HTMLElement>("[data-note]"),
+    ].map((el) => el.dataset.drumRow);
+    expect(rows).toEqual(["0", "1", "2"]);
+  });
+
+  test("보정(편집) 때는 반주 줄을 접는다", () => {
+    useSongStore.getState().setAccompaniment({
+      drums: [],
+      bass: [note(40, 0)],
+      keys: [],
+      guitar: [],
+    });
+    const { container, rerender } = render(<Timeline />);
+    const rowHeight = () =>
+      (lane(container, "bass").parentElement as HTMLElement).style.height;
+    expect(rowHeight()).toBe("48px");
+    rerender(<Timeline editable />);
+    expect(rowHeight()).toBe("20px");
+  });
+
+  test("녹음 중 재생선에는 '녹음 중' 꼬리표를 붙인다", () => {
+    const { container, rerender } = render(<Timeline position={4} />);
+    expect(container.querySelector("[data-playhead]")?.textContent).toBe("");
+    rerender(<Timeline position={4} recording />);
+    expect(
+      container.querySelector('[data-playhead="recording"]')?.textContent,
+    ).toBe("녹음 중");
+  });
+
+  test("폭이 넉넉한 멜로디 음표에는 음 이름을 쓴다", () => {
+    useSongStore.getState().setMelody([
+      { pitch: 60, start: 0, duration: 4, velocity: 0.8 }, // 4칸 × 12px
+      { pitch: 62, start: 4, duration: 1, velocity: 0.8 }, // 1칸: 좁음
+    ]);
+    const { container } = render(<Timeline />);
+    const [wide, narrow] = lane(container, "melody").querySelectorAll(
+      "[data-note]",
+    );
+    expect(wide.textContent).toBe("C4");
+    expect(narrow.textContent).toBe("");
   });
 });
 

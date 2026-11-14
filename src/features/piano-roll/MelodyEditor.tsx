@@ -243,6 +243,9 @@ export function MelodyEditor({
               opacity: 0.4 + note.velocity * 0.6,
             }}
           >
+            {note.duration * stepWidth - 1 >= NOTE_LABEL_MIN_WIDTH && (
+              <NoteLabel pitch={note.pitch} />
+            )}
             {/* 길이 조절 손잡이 자리. 마우스를 올리면 커서가 바뀝니다 */}
             <span
               aria-hidden
@@ -253,6 +256,21 @@ export function MelodyEditor({
         );
       })}
     </div>
+  );
+}
+
+/** 음표 폭이 이 이상이면 블록 안에 음 이름을 씁니다 */
+export const NOTE_LABEL_MIN_WIDTH = 24;
+
+/** 음표 블록 안 음 이름 (목업 피아노롤) */
+export function NoteLabel({ pitch }: { pitch: number }) {
+  return (
+    <span
+      aria-hidden
+      className="pointer-events-none absolute top-0 left-0.5 text-[8px] leading-[9px] font-bold text-ink"
+    >
+      {noteName(pitch)}
+    </span>
   );
 }
 

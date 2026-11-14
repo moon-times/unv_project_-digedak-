@@ -21,7 +21,14 @@ import { snapNotes } from "@/features/recorder/quantize";
 import { ChordEditBar } from "./ChordEditBar";
 import { replaceChord } from "./chordEdit";
 import { deleteNote, sameNote } from "./edit";
-import { EditBar, EditTools, MelodyEditor, VelocityLane } from "./MelodyEditor";
+import {
+  EditBar,
+  EditTools,
+  MelodyEditor,
+  NOTE_LABEL_MIN_WIDTH,
+  NoteLabel,
+  VelocityLane,
+} from "./MelodyEditor";
 import { useMelodyHistory } from "./useMelodyHistory";
 import {
   LABEL_WIDTH,
@@ -101,6 +108,9 @@ export function Timeline({
       stepWidth={stepWidth}
     />
   );
+  const accompanimentHeight = editable
+    ? FOLDED_ACCOMPANIMENT_HEIGHT
+    : ACCOMPANIMENT_HEIGHT;
   const [low, high] = editable
     ? widen(pitchRange(song.melody, 24), EDIT_PITCH_MARGIN)
     : pitchRange(song.melody);
@@ -286,20 +296,29 @@ export function Timeline({
             key={lane}
             label={label}
             dot={dot}
-            height={ACCOMPANIMENT_HEIGHT}
+            height={accompanimentHeight}
             grid={grid}
             lane={lane}
             empty={notes.length === 0}
           >
             {notes.length === 0 ? (
-              <EmptyLane text="③ 반주 단계에서 채워져요" />
+              editable ? null : (
+                <EmptyLane text="③ 반주 단계에서 채워져요" />
+              )
+            ) : lane === "drums" ? (
+              <DrumHits
+                notes={notes}
+                height={accompanimentHeight}
+                stepWidth={stepWidth}
+              />
             ) : (
               <Notes
                 notes={notes}
                 {...rangeOf(notes)}
-                height={ACCOMPANIMENT_HEIGHT}
+                height={accompanimentHeight}
                 stepWidth={stepWidth}
                 look={noteLook}
+                minHeight={MIN_ACCOMPANIMENT_NOTE}
               />
             )}
           </Row>
@@ -311,7 +330,13 @@ export function Timeline({
             aria-hidden
             className={`pointer-events-none absolute top-0 bottom-0 ${recording ? "z-20 w-[3px] bg-record" : "w-0.5 bg-timeline-text"}`}
             style={{ left: LABEL_WIDTH + position * stepWidth }}
-          />
+          >
+            {recording && (
+              <span className="absolute top-0.5 left-1 rounded-full bg-record px-1.5 text-[10px] leading-4 font-bold whitespace-nowrap text-on-primary">
+                녹음 중
+              </span>
+            )}
+          </div>
         )}
       </div>
     </section>
@@ -425,6 +450,11 @@ const GUITAR_NOTE = {
   edge: "border border-track-guitar-border",
 };
 const DRUM_NOTE = { fill: drumNoteClass };
+
+/** 반주 음표 최소 높이(px). 음역이 넓어도 목업처럼 막대로 보이게 합니다 */
+const MIN_ACCOMPANIMENT_NOTE = 6;
+/** 보정(편집) 때 반주 줄 높이. 멜로디 · 세기 줄이 커지는 만큼 접어서 한 화면에 */
+const FOLDED_ACCOMPANIMENT_HEIGHT = 20;
 
 /** 음표 높이가 이보다 낮으면 위아래 1px 테두리가 색을 다 덮으므로 테두리를 뺍니다 */
 const MIN_EDGE_ROW_HEIGHT = 4;
@@ -549,6 +579,7 @@ function Notes({
   stepWidth,
   look,
   titled = false,
+  minHeight = 0,
 }: {
   notes: Note[];
   low: number;
@@ -556,28 +587,78 @@ function Notes({
   height: number;
   stepWidth: number;
   look: { fill: string | ((note: Note) => string); edge?: string };
+  /** 멜로디: 마우스를 올리면 음 이름, 폭이 넉넉하면 블록 안에도 */
   titled?: boolean;
+  /** 음표 최소 높이(px). 음 칸보다 크면 칸 가운데에 맞추고 줄 밖으로는 안 나가게 */
+  minHeight?: number;
 }) {
   const rowHeight = height / (high - low + 1);
+  const noteHeight = Math.max(2, rowHeight - 1, minHeight);
   const { fill, edge } = look;
   const fillOf = typeof fill === "string" ? () => fill : fill;
-  const edgeClass = edge && rowHeight >= MIN_EDGE_ROW_HEIGHT ? edge : "";
-  return notes.map((note) => (
-    <div
-      // 순서가 아니라 위치 · 높이로 구분해야 편집(삭제 · 이동) 때 다른 음표 요소가 재사용되지 않습니다
-      key={`${note.start}:${note.pitch}`}
-      data-note
-      title={titled ? noteName(note.pitch) : undefined}
-      className={`absolute rounded-[2px] ${fillOf(note)} ${edgeClass}`}
-      style={{
-        left: note.start * stepWidth,
-        width: note.duration * stepWidth - 1,
-        top: (high - note.pitch) * rowHeight,
-        height: Math.max(2, rowHeight - 1),
-        opacity: 0.4 + note.velocity * 0.6,
-      }}
-    />
-  ));
+  const edgeClass = edge && noteHeight >= MIN_EDGE_ROW_HEIGHT ? edge : "";
+  return notes.map((note) => {
+    const width = note.duration * stepWidth - 1;
+    const top = (high - note.pitch) * rowHeight - (noteHeight - rowHeight) / 2;
+    return (
+      <div
+        // 순서가 아니라 위치 · 높이로 구분해야 편집(삭제 · 이동) 때 다른 음표 요소가 재사용되지 않습니다
+        key={`${note.start}:${note.pitch}`}
+        data-note
+        title={titled ? noteName(note.pitch) : undefined}
+        className={`absolute overflow-hidden rounded-[2px] ${fillOf(note)} ${edgeClass}`}
+        style={{
+          left: note.start * stepWidth,
+          width,
+          top: Math.min(Math.max(0, top), height - noteHeight),
+          height: noteHeight,
+          opacity: 0.4 + note.velocity * 0.6,
+        }}
+      >
+        {titled && width >= NOTE_LABEL_MIN_WIDTH && (
+          <NoteLabel pitch={note.pitch} />
+        )}
+      </div>
+    );
+  });
+}
+
+/** 드럼은 악기별 세 칸(위 하이햇 · 크래시, 가운데 스네어 등, 아래 킥)에 짧은 세로 막대 */
+function DrumHits({
+  notes,
+  height,
+  stepWidth,
+}: {
+  notes: Note[];
+  height: number;
+  stepWidth: number;
+}) {
+  const band = height / 3;
+  return notes.map((note) => {
+    const row =
+      note.pitch === DRUM.kick
+        ? 2
+        : note.pitch === DRUM.closedHat ||
+            note.pitch === DRUM.openHat ||
+            note.pitch === DRUM.crash
+          ? 0
+          : 1;
+    return (
+      <div
+        key={`${note.start}:${note.pitch}`}
+        data-note
+        data-drum-row={row}
+        className={`absolute rounded-[1px] ${drumNoteClass(note)}`}
+        style={{
+          left: note.start * stepWidth,
+          width: Math.min(3, Math.max(1, note.duration * stepWidth - 1)),
+          top: row * band + 1,
+          height: Math.max(2, band - 2),
+          opacity: 0.4 + note.velocity * 0.6,
+        }}
+      />
+    );
+  });
 }
 
 /** 멜로디 줄 왼쪽에 C음 위치만 표시 */
