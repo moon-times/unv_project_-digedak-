@@ -40,6 +40,40 @@ export type Accompaniment = {
   guitar: Note[]; // 기타 트랙을 넣기 전에 저장된 곡은 불러올 때 빈 배열로 채웁니다.
 };
 
+/** AI 리터치 편곡 계획의 한 구간. 마디 번호는 0부터, endBar는 이 마디 앞까지 (명세 08) */
+export const SECTION_ROLES = [
+  "intro",
+  "verse",
+  "build",
+  "chorus",
+  "break",
+  "outro",
+] as const;
+export const DRUM_FEELS = ["none", "half", "normal", "double"] as const;
+export const BASS_FEELS = ["rest", "long", "normal", "octave"] as const;
+export const KEYS_FEELS = ["rest", "pad", "normal", "arpeggio"] as const;
+export const GUITAR_FEELS = ["rest", "normal", "arpeggio", "power"] as const;
+
+export type ArrangementSection = {
+  startBar: number;
+  endBar: number;
+  role: (typeof SECTION_ROLES)[number];
+  energy: 1 | 2 | 3 | 4 | 5;
+  drums: (typeof DRUM_FEELS)[number];
+  bass: (typeof BASS_FEELS)[number];
+  keys: (typeof KEYS_FEELS)[number];
+  guitar: (typeof GUITAR_FEELS)[number];
+  fillAtEnd: boolean; // 구간 마지막 마디 끝 1박에 탐 필인
+  crashAtStart: boolean; // 구간 첫 박 크래시
+};
+
+export type ArrangementPlan = {
+  sections: ArrangementSection[];
+  endingHit: boolean; // 곡 마지막 마디는 첫 박에 모두 한 번 치고 끝
+  summary: string; // 화면에 보여 줄 한두 문장
+  enabled: boolean; // [원래] / [AI 편곡] 전환. false면 반주 엔진은 계획을 무시
+};
+
 export type SongState = {
   version: 1;
   title: string;
@@ -51,6 +85,7 @@ export type SongState = {
   chords: Chord[];
   explanation?: string; // 규칙 엔진 기본 설명 또는 LLM이 다듬은 설명
   accompaniment?: Accompaniment; // 반주 엔진 결과 (타임라인 반주 줄 표시용)
+  arrangement?: ArrangementPlan; // AI 리터치 편곡 계획. 없으면 장르 기본 반주
   tracks: Track[];
   recording?: { path: string; trimStart?: number; trimEnd?: number };
 };

@@ -41,3 +41,49 @@ describe("기타 트랙 이전에 저장된 곡", () => {
     expect(upgradeSong(noAccompaniment as never).accompaniment).toBeUndefined();
   });
 });
+
+describe("편곡 계획 (명세 08)", () => {
+  const section = {
+    startBar: 0,
+    endBar: 4,
+    role: "intro",
+    energy: 2,
+    drums: "half",
+    bass: "long",
+    keys: "pad",
+    guitar: "rest",
+    fillAtEnd: true,
+    crashAtStart: false,
+  };
+  const plan = {
+    sections: [section],
+    endingHit: true,
+    summary: "조용히 시작해요.",
+    enabled: true,
+  };
+
+  test("계획이 없는 예전 곡도 그대로 통과한다", () => {
+    expect(
+      SongStateSchema.parse(createEmptySong()).arrangement,
+    ).toBeUndefined();
+  });
+
+  test("계획이 있는 곡은 계획을 그대로 읽는다", () => {
+    const parsed = SongStateSchema.parse({
+      ...createEmptySong(),
+      arrangement: plan,
+    });
+    expect(parsed.arrangement).toEqual(plan);
+  });
+
+  test("세기 · 설정 값이 범위 밖이면 거절한다", () => {
+    const bad = (patch: object) =>
+      SongStateSchema.safeParse({
+        ...createEmptySong(),
+        arrangement: { ...plan, sections: [{ ...section, ...patch }] },
+      }).success;
+    expect(bad({ energy: 6 })).toBe(false);
+    expect(bad({ drums: "loud" })).toBe(false);
+    expect(bad({ endBar: 0 })).toBe(false);
+  });
+});

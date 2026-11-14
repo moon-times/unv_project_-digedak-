@@ -11,6 +11,7 @@ import {
 } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { ArrangePanel } from "@/features/arranger/ArrangePanel";
+import { useAccompanimentSync } from "@/features/arranger/useAccompanimentSync";
 import { MixerPanel } from "@/features/mixer/MixerPanel";
 import { MelodyOnlyButton } from "@/features/piano-roll/MelodyOnlyButton";
 import { RefinePanel } from "@/features/piano-roll/RefinePanel";
@@ -80,6 +81,8 @@ export function Studio({ projectId }: { projectId: string | null }) {
   const phase = useProjectSync(projectId, auth === "member");
   useExplanationPolish(auth === "member");
   useRecordingUpload(auth === "member");
+  // 반주 패널이 닫혀 있어도 이미 만든 반주를 코드 · 장르 · 빠르기에 맞춥니다 (#27)
+  useAccompanimentSync({ create: false });
   const step = useSongStore((s) => s.step);
   // song 전체를 구독하면 제목 한 글자마다 타임라인까지 다시 그려지므로, 열린 단계 목록만 구독합니다.
   const available = useSongStore(useShallow((s) => getAvailableSteps(s.song)));

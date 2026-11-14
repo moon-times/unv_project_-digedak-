@@ -1,8 +1,21 @@
 // 반주 템플릿 엔진: 코드 진행과 장르로 드럼·베이스·건반 음표를 만듭니다.
 // 같은 입력이면 항상 같은 결과가 나오므로(무작위 없음) 장르를 바꿀 때마다 다시 불러도 됩니다.
 import { parseChordSymbol, type ChordInfo } from "@/lib/music";
-import type { Accompaniment, Chord, Note, Style } from "@/types/song";
-import { DRUM, STYLE_PATTERNS, type GuitarHit } from "./patterns";
+import type {
+  Accompaniment,
+  ArrangementPlan,
+  Chord,
+  Note,
+  Style,
+} from "@/types/song";
+import {
+  DRUM,
+  ENERGY_GAIN,
+  endingPattern,
+  patternFor,
+  STYLE_PATTERNS,
+  type GuitarHit,
+} from "./patterns";
 import { bassPitch, chooseVoicing, guitarVoicing, voiceAt } from "./voicing";
 
 const DEFAULT_STEPS_PER_BAR = 16;
@@ -15,7 +28,13 @@ export type ArrangeOptions = {
    * 곡 박자표를 따르려면 `stepsPerBar(song.timeSignature)` (`@/lib/transport`)를 넘깁니다.
    */
   stepsPerBar?: number;
+  /** AI 리터치 편곡 계획. 없거나 enabled가 false면 장르 패턴 그대로 (명세 08) */
+  plan?: ArrangementPlan;
 };
+
+/** 필인이 차지하는 마디 끝 길이(step) = 1박 */
+const FILL_STEPS = 4;
+const FILL_TOMS = [DRUM.tomHighest, DRUM.tomHigh, DRUM.tomMid, DRUM.tomLow];
 
 type ParsedChord = { info: ChordInfo; start: number; end: number };
 
@@ -52,7 +71,7 @@ export function generateAccompaniment(
   chords: Chord[],
   style: Style,
   bpm: number,
-  { stepsPerBar = DEFAULT_STEPS_PER_BAR }: ArrangeOptions = {},
+  { stepsPerBar = DEFAULT_STEPS_PER_BAR, plan }: ArrangeOptions = {},
 ): Accompaniment {
   const barSteps =
     Number.isFinite(stepsPerBar) && stepsPerBar > 0
@@ -63,15 +82,14 @@ export function generateAccompaniment(
     ...chords.map((chord) => chord.start + chord.duration),
   );
   const barCount = Math.ceil(songEnd / barSteps);
-  const pattern = STYLE_PATTERNS[style];
+  const stylePattern = STYLE_PATTERNS[style];
+  const sections = plan?.enabled ? plan.sections : undefined;
   const parsed = parseChords(chords);
 
   const drums: Note[] = [];
   const bass: Note[] = [];
   const keys: Note[] = [];
   const guitar: Note[] = [];
-  const hatInterval =
-    bpm >= FAST_BPM ? pattern.hatInterval * 2 : pattern.hatInterval;
   const inBar = (step: number) => step < barSteps;
   let voicing: number[] | null = null;
   let voicedChord: ParsedChord | undefined;
@@ -82,15 +100,34 @@ export function generateAccompaniment(
     const fits = (start: number, duration: number) =>
       Math.max(1, Math.min(duration, barEnd - start));
 
+    // 편곡 계획: 이 마디가 속한 구간의 설정으로 패턴 · 세기 · 크래시 · 필인을 정합니다.
+    const section = sections?.find((s) => s.startBar <= bar && bar < s.endBar);
+    const ending = !!sections && !!plan?.endingHit && bar === barCount - 1;
+    const pattern = ending
+      ? endingPattern(stylePattern, barSteps)
+      : section
+        ? patternFor(stylePattern, section, barSteps)
+        : stylePattern;
+    const gain = section && !ending ? ENERGY_GAIN[section.energy - 1] : 1;
+    const vel = (velocity: number) => Math.min(1, velocity * gain);
+    const fillFrom =
+      section?.fillAtEnd &&
+      !ending &&
+      bar === Math.min(section.endBar, barCount) - 1
+        ? barSteps - FILL_STEPS
+        : barSteps;
+    const hatInterval =
+      bpm >= FAST_BPM ? pattern.hatInterval * 2 : pattern.hatInterval;
+
     // 드럼
     for (const { step, pitch, velocity } of pattern.drums) {
       const start = barStart + step;
-      if (inBar(step) && start < barEnd)
-        drums.push({ pitch, start, duration: 1, velocity });
+      if (step < fillFrom && inBar(step) && start < barEnd)
+        drums.push({ pitch, start, duration: 1, velocity: vel(velocity) });
     }
     for (
       let step = 0;
-      inBar(step) && barStart + step < barEnd;
+      hatInterval > 0 && step < fillFrom && barStart + step < barEnd;
       step += hatInterval
     ) {
       const [strong, weak] = pattern.hatVelocity;
@@ -98,13 +135,24 @@ export function generateAccompaniment(
         pitch: DRUM.closedHat,
         start: barStart + step,
         duration: 1,
-        velocity: step % 4 === 0 ? strong : weak,
+        velocity: vel(step % 4 === 0 ? strong : weak),
       });
     }
-    const crashBar =
-      pattern.crashEveryBars === 0
+    // 필인: 마디 끝 1박을 탐 16분음표로, 높은 탐에서 낮은 탐으로 점점 세게
+    for (let step = fillFrom, i = 0; step < barSteps; step++, i++) {
+      if (barStart + step < barEnd)
+        drums.push({
+          pitch: FILL_TOMS[i % FILL_TOMS.length],
+          start: barStart + step,
+          duration: 1,
+          velocity: vel(0.6 + 0.1 * i),
+        });
+    }
+    const crashBar = sections
+      ? ending || (!!section?.crashAtStart && bar === section.startBar)
+      : stylePattern.crashEveryBars === 0
         ? bar === 0
-        : bar % pattern.crashEveryBars === 0;
+        : bar % stylePattern.crashEveryBars === 0;
     if (crashBar)
       drums.push({
         pitch: DRUM.crash,
@@ -122,7 +170,7 @@ export function generateAccompaniment(
         pitch: bassPitch(chord.info, tone),
         start,
         duration: fits(start, Math.min(duration, chord.end - start)),
-        velocity,
+        velocity: vel(velocity),
       });
     }
 
@@ -139,7 +187,7 @@ export function generateAccompaniment(
       const pitches =
         voices === "chord" ? voicing! : voices.map((i) => voiceAt(voicing!, i));
       for (const pitch of pitches)
-        keys.push({ pitch, start, duration: length, velocity });
+        keys.push({ pitch, start, duration: length, velocity: vel(velocity) });
     }
 
     // 기타: 코드 모양에서 스트로크 종류에 맞는 줄만 칩니다.
@@ -149,7 +197,12 @@ export function generateAccompaniment(
       if (!inBar(step) || start >= barEnd || !chord) continue;
       const length = fits(start, Math.min(duration, chord.end - start));
       for (const pitch of guitarStrings(guitarVoicing(chord.info), strum))
-        guitar.push({ pitch, start, duration: length, velocity });
+        guitar.push({
+          pitch,
+          start,
+          duration: length,
+          velocity: vel(velocity),
+        });
     }
   }
 
