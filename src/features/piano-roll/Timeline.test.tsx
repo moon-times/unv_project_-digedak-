@@ -1,4 +1,10 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { useSongStore } from "@/store/songStore";
 import { LABEL_WIDTH, STEP_WIDTH } from "./layout";
@@ -132,5 +138,92 @@ describe("Timeline", () => {
     const [keys] = lane(container, "keys").querySelectorAll("[data-note]");
     expect(bass.className).toContain("border-track-bass-border");
     expect(keys.className).not.toContain("border-track-keys-border");
+  });
+});
+
+describe("코드 고치기 (보정 단계)", () => {
+  beforeEach(() => {
+    const store = useSongStore.getState();
+    store.setMelody([note(60, 0), note(64, 4), note(67, 8)]);
+    store.setChords([
+      { symbol: "C", start: 0, duration: 16 },
+      { symbol: "G", start: 16, duration: 16 },
+    ]);
+  });
+  const chords = () => useSongStore.getState().song.chords;
+  const chordButton = (n: number) =>
+    screen.getByRole("button", { name: new RegExp(`^코드 ${n}번째`) });
+
+  test("보기 전용이면 코드를 누를 수 없다", () => {
+    render(<Timeline />);
+    expect(screen.queryByRole("button", { name: /^코드/ })).toBeNull();
+  });
+
+  test("코드를 누르고 키 안의 코드 버튼을 고르면 그 코드만 바뀐다", () => {
+    render(<Timeline editable />);
+    fireEvent.click(chordButton(2));
+
+    const bar = screen.getByRole("group", { name: "코드 고치기" });
+    expect(
+      within(bar).getByText("2마디 1박부터", { exact: false }),
+    ).toBeTruthy();
+    expect(
+      within(bar).getByRole("button", { name: /^G/, pressed: true }),
+    ).toBeTruthy();
+
+    fireEvent.click(within(bar).getByRole("button", { name: /^Em/ }));
+    expect(chords().map((c) => c.symbol)).toEqual(["C", "Em"]);
+    expect(chords()[1]).toMatchObject({ start: 16, duration: 16 });
+  });
+
+  test("멜로디와 잘 맞는 코드에 표시가 붙는다", () => {
+    render(<Timeline editable />);
+    fireEvent.click(chordButton(1));
+    const bar = screen.getByRole("group", { name: "코드 고치기" });
+    expect(
+      within(bar).getByRole("button", { name: /^C.*잘 어울려요/ }),
+    ).toBeTruthy();
+  });
+
+  test("직접 쓴 코드는 표기를 맞춰 넣고, 읽을 수 없으면 안내만", () => {
+    render(<Timeline editable />);
+    fireEvent.click(chordButton(1));
+    const input = screen.getByRole("textbox", { name: "코드 직접 쓰기" });
+
+    fireEvent.change(input, { target: { value: "xyz" } });
+    fireEvent.click(screen.getByRole("button", { name: "바꾸기" }));
+    expect(screen.getByRole("alert").textContent).toContain("읽을 수 없는");
+    expect(chords()[0].symbol).toBe("C");
+
+    fireEvent.change(input, { target: { value: "fmaj7" } });
+    fireEvent.submit(input.closest("form")!);
+    expect(chords()[0].symbol).toBe("Fmaj7");
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  test("음을 고르면 코드 고르기는 닫히고, Esc · [닫기]로도 닫힌다", () => {
+    render(<Timeline editable />);
+    fireEvent.click(chordButton(1));
+    fireEvent.keyDown(screen.getByRole("textbox", { name: "코드 직접 쓰기" }), {
+      key: "Escape",
+    });
+    expect(screen.queryByRole("group", { name: "코드 고치기" })).toBeNull();
+
+    fireEvent.click(chordButton(1));
+    fireEvent.click(screen.getByRole("button", { name: "닫기" }));
+    expect(screen.queryByRole("group", { name: "코드 고치기" })).toBeNull();
+
+    fireEvent.click(chordButton(1));
+    fireEvent.pointerDown(screen.getAllByRole("button", { name: /^C4/ })[0], {
+      pointerId: 1,
+      clientX: 0,
+      clientY: 0,
+    });
+    fireEvent.pointerUp(screen.getAllByRole("button", { name: /^C4/ })[0], {
+      pointerId: 1,
+      clientX: 0,
+      clientY: 0,
+    });
+    expect(screen.queryByRole("group", { name: "코드 고치기" })).toBeNull();
   });
 });
