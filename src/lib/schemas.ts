@@ -89,10 +89,15 @@ export const AnalysisResultSchema: z.ZodType<AnalysisResult> = z.object({
   explanation: z.string(),
 });
 
-/** POST /api/analyze 요청. analysis는 규칙 엔진 결과, request는 재추천 요청(선택 기능) */
+/** POST /api/analyze 요청. analysis는 규칙 엔진 결과, request는 재추천 요청(선택 기능)
+ * 서버가 LLM에 그대로 넘기므로 크기에 상한을 둡니다 (30초 녹음은 보통 음표 수십 개).
+ */
 export const AnalyzeRequestSchema = z.object({
-  melody: z.array(NoteSchema),
-  analysis: AnalysisResultSchema,
+  melody: z.array(NoteSchema).max(2000),
+  analysis: AnalysisResultSchema.refine(
+    (a) => a.explanation.length <= 1000 && a.chords.length <= 512,
+    "analysis가 너무 큽니다",
+  ),
   request: z.string().max(200).optional(),
 });
 export type AnalyzeRequest = z.infer<typeof AnalyzeRequestSchema>;

@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      llm_usage: {
+        Row: {
+          count: number
+          day: string
+          user_id: string
+        }
+        Insert: {
+          count?: number
+          day: string
+          user_id: string
+        }
+        Update: {
+          count?: number
+          day?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       projects: {
         Row: {
           created_at: string
@@ -49,7 +67,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      consume_llm_quota: { Args: { daily_limit: number }; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
