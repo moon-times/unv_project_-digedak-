@@ -176,6 +176,22 @@ describe("코드 고치기 (보정 단계)", () => {
     expect(chords()[1]).toMatchObject({ start: 16, duration: 16 });
   });
 
+  test("지금 코드를 다시 고르면 곡을 건드리지 않는다 (dirty 그대로, 자동 저장 없음)", () => {
+    useSongStore.getState().markSaved();
+    const before = useSongStore.getState().song;
+    render(<Timeline editable />);
+    fireEvent.click(chordButton(2));
+    const bar = screen.getByRole("group", { name: "코드 고치기" });
+
+    fireEvent.click(within(bar).getByRole("button", { name: /^G/ }));
+    const input = screen.getByRole("textbox", { name: "코드 직접 쓰기" });
+    fireEvent.change(input, { target: { value: "g" } });
+    fireEvent.submit(input.closest("form")!);
+
+    expect(useSongStore.getState().dirty).toBe(false);
+    expect(useSongStore.getState().song).toBe(before);
+  });
+
   test("멜로디와 잘 맞는 코드에 표시가 붙는다", () => {
     render(<Timeline editable />);
     fireEvent.click(chordButton(1));

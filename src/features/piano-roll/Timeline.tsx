@@ -339,11 +339,11 @@ export function Timeline({
           keyName={keyName}
           melody={song.melody}
           barSteps={barSteps}
-          onChange={(symbol) =>
-            useSongStore
-              .getState()
-              .setChords(replaceChord(song.chords, selectedChord, symbol))
-          }
+          onChange={(symbol) => {
+            const next = replaceChord(song.chords, selectedChord, symbol);
+            // 같은 코드를 다시 고르면 곡을 건드리지 않습니다 (setChords는 dirty를 켜서 자동 저장이 돕니다).
+            if (next !== song.chords) useSongStore.getState().setChords(next);
+          }}
           onClose={() => setChordIndex(null)}
         />
       ) : (
