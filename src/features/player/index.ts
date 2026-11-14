@@ -18,8 +18,4 @@ export {
 } from "./schedule";
 export { dbToGain, trackGains } from "./mix";
 export { INSTRUMENT_CHOICES } from "./instruments";
-export {
-  usePlaybackStep,
-  usePlayerState,
-  useSyncPlayerWithSong,
-} from "./usePlayer";
+export { usePlayerState, useSyncPlayerWithSong } from "./usePlayer";

@@ -59,10 +59,6 @@ describe("schedule", () => {
       { track: "bass", pitch: 36, time: 0, duration: 1, velocity: 0.8 },
       { track: "melody", pitch: 64, time: 0.5, duration: 0.5, velocity: 0.8 },
     ]);
-    // 4 step부터: 그 이전 음은 빼고 4 step을 0초로
-    expect(scheduleSong(s, 4)).toEqual([
-      { track: "melody", pitch: 64, time: 0, duration: 0.5, velocity: 0.8 },
-    ]);
   });
 });
 

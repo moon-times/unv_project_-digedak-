@@ -39,10 +39,6 @@ function correlation(a: number[], b: number[]): number {
 
 export type KeyDetection = {
   key: Key;
-  /** 가장 잘 맞는 키의 상관계수 (-1 ~ 1). 높을수록 확신이 큼 */
-  correlation: number;
-  /** 두 번째로 잘 맞는 키 (나란한조 혼동 등을 설명할 때 사용) */
-  runnerUp: Key;
   histogram: number[];
 };
 
@@ -62,18 +58,6 @@ export function detectKey(melody: Note[]): KeyDetection {
   // 동점이면 먼저 넣은 키(장조, 낮은 음)가 앞에 오도록 안정 정렬
   scores.sort((a, b) => b.r - a.r);
 
-  if (scores[0].r <= 0) {
-    return {
-      key: DEFAULT_KEY,
-      correlation: 0,
-      runnerUp: DEFAULT_KEY,
-      histogram,
-    };
-  }
-  return {
-    key: scores[0].key,
-    correlation: scores[0].r,
-    runnerUp: scores[1].key,
-    histogram,
-  };
+  // 어느 키와도 닮지 않았으면(빈 멜로디 등) 기본 키
+  return { key: scores[0].r <= 0 ? DEFAULT_KEY : scores[0].key, histogram };
 }
