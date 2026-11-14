@@ -14,6 +14,7 @@ import { RecordPanel } from "@/features/recorder/RecordPanel";
 import { useRecordingPosition } from "@/features/recorder/recordingPosition";
 import { useAuthUser } from "@/lib/supabase/useAuthUser";
 import { ExportDialog } from "./ExportDialog";
+import { useExplanationPolish } from "./useExplanationPolish";
 import { useProjectSync, type SyncPhase } from "./useProjectSync";
 import { useRecordingUpload } from "./useRecordingUpload";
 import {
@@ -72,6 +73,7 @@ export function Studio({ projectId }: { projectId: string | null }) {
   // 로그인 상태를 확인하는 동안에는 회원 · 게스트 어느 쪽 화면도 보이지 않게 둡니다.
   const auth: Auth = loading ? "loading" : user ? "member" : "guest";
   const phase = useProjectSync(projectId, auth === "member");
+  useExplanationPolish(auth === "member");
   useRecordingUpload(auth === "member");
   const step = useSongStore((s) => s.step);
   // song 전체를 구독하면 제목 한 글자마다 타임라인까지 다시 그려지므로, 열린 단계 목록만 구독합니다.
