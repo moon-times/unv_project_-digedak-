@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import {
   createProject,
   loadProject,
+  PROJECT_CONFLICT,
   saveProject,
 } from "@/lib/supabase/projects";
 import { useSongStore } from "@/store/songStore";
@@ -14,6 +15,15 @@ import { useSongStore } from "@/store/songStore";
 export const AUTOSAVE_DELAY = 2000;
 /** 저장에 실패하면 이만큼 뒤에 한 번 다시 시도합니다 (ms) */
 export const RETRY_DELAY = 5000;
+
+// 내가 마지막으로 불러오거나 저장한 시각(updated_at). 저장할 때 DB 값과 같은지 봐서 다른 탭의 저장을 덮어쓰지 않습니다.
+// 스튜디오를 나갔다 같은 곡으로 돌아오면 다시 불러오지 않으므로(store에 있음) 컴포넌트 밖에 둡니다.
+let seen: { id: string; updatedAt: string } | null = null;
+
+/** 테스트용 */
+export function resetProjectSync() {
+  seen = null;
+}
 
 /** error: 네트워크 등으로 불러오지 못함 */
 export type SyncPhase = "loading" | "ready" | "not-found" | "invalid" | "error";
@@ -56,6 +66,7 @@ export function useProjectSync(
         .then((result) => {
           if (cancelled) return;
           if (result.status === "ok") {
+            seen = { id: routeId, updatedAt: result.updatedAt };
             useSongStore.getState().loadSong(result.song, routeId);
             settle("ready");
           } else {
@@ -86,13 +97,16 @@ export function useProjectSync(
       timer = undefined;
       const store = useSongStore.getState();
       // 저장이 진행 중이면, 끝난 뒤 바뀐 곡을 보고 다시 예약합니다.
-      if (saving.current || !store.dirty) return;
+      // 다른 탭이 먼저 저장했으면(conflict) 새로고침 전까지 덮어쓰지 않습니다.
+      if (saving.current || !store.dirty || store.saveStatus === "conflict")
+        return;
       saving.current = true;
       const song = store.song;
       store.setSaveStatus("saving");
       try {
         if (store.projectId === null) {
-          const id = await createProject(supabase, song);
+          const { id, updatedAt } = await createProject(supabase, song);
+          seen = { id, updatedAt };
           // 연결되는 순간 게스트 보관본도 비워집니다 (persist partialize)
           useSongStore.getState().setProjectId(id);
           // 서버 왕복 없이 주소만 바꿉니다 (Next의 native history 지원).
@@ -101,7 +115,14 @@ export function useProjectSync(
             window.history.replaceState(null, "", `/studio/${id}`);
           }
         } else {
-          await saveProject(supabase, store.projectId, song);
+          const id = store.projectId;
+          const updatedAt = await saveProject(
+            supabase,
+            id,
+            song,
+            seen?.id === id ? seen.updatedAt : undefined,
+          );
+          seen = { id, updatedAt };
         }
         retried = false;
         const now = useSongStore.getState();
@@ -111,7 +132,13 @@ export function useProjectSync(
           now.setSaveStatus("idle");
           schedule();
         }
-      } catch {
+      } catch (error) {
+        if (error instanceof Error && error.message === PROJECT_CONFLICT) {
+          useSongStore.getState().setSaveStatus("conflict");
+          return;
+        }
+        // 응답만 못 받고 DB에는 저장됐을 수 있어, 다음 저장은 시각을 비교하지 않습니다 (내 저장을 충돌로 잘못 보지 않게).
+        seen = null;
         useSongStore.getState().setSaveStatus("error");
         if (!retried) {
           retried = true;
@@ -127,10 +154,16 @@ export function useProjectSync(
     const unsubscribe = useSongStore.subscribe((state, previous) => {
       if (state.song !== previous.song && state.dirty) schedule();
     });
+    // 다시 시도까지 실패한 뒤에는 예약이 없으므로, 네트워크가 돌아오면 바로 저장합니다.
+    const onOnline = () => {
+      if (useSongStore.getState().dirty) schedule(0);
+    };
+    window.addEventListener("online", onOnline);
     return () => {
       unsubscribe();
-      // 스튜디오를 떠날 때 기다리던 저장이 있으면 바로 보냅니다.
-      if (timer !== undefined) {
+      window.removeEventListener("online", onOnline);
+      // 스튜디오를 떠날 때 저장 안 된 변경이 있으면 바로 보냅니다 (예약이 없어도: 두 번 실패한 뒤).
+      if (timer !== undefined || useSongStore.getState().dirty) {
         clearTimeout(timer);
         void save();
       }
@@ -142,6 +175,8 @@ export function useProjectSync(
     if (!isMember) return;
     const onBeforeUnload = (event: BeforeUnloadEvent) => {
       const { dirty, saveStatus } = useSongStore.getState();
+      // 충돌이면 새로고침하라고 안내했으므로 막지 않습니다.
+      if (saveStatus === "conflict") return;
       if (dirty || saveStatus === "saving") event.preventDefault();
     };
     window.addEventListener("beforeunload", onBeforeUnload);

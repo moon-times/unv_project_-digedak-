@@ -19,7 +19,8 @@ import {
 export const STUDIO_STEPS = ["record", "refine", "arrange", "mix"] as const;
 export type StudioStep = (typeof STUDIO_STEPS)[number];
 
-export type SaveStatus = "idle" | "saving" | "saved" | "error";
+/** conflict: 다른 탭 · 기기가 먼저 저장해서 이 탭의 저장을 멈춤 (새로고침해야 풀림) */
+export type SaveStatus = "idle" | "saving" | "saved" | "error" | "conflict";
 
 /**
  * 진행 바에서 이동할 수 있는 단계. 앞 단계 결과가 있어야 다음 단계가 열립니다.

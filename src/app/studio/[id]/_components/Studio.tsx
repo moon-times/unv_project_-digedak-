@@ -281,6 +281,7 @@ export function saveStatusText(
   if (isGuest) return "게스트로 작업 중이에요. 저장하려면 로그인하세요";
   if (status === "saving") return "저장 중...";
   if (status === "error") return "저장하지 못했어요";
+  if (status === "conflict") return "다른 곳에서 바뀌었어요. 새로고침해 주세요";
   if (dirty) return "저장 전 변경 사항이 있어요";
   if (status === "saved" && lastSavedAt !== null) {
     const time = new Date(lastSavedAt).toLocaleTimeString("ko-KR", {

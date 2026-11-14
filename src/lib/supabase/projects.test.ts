@@ -46,11 +46,23 @@ describe("saveProject", () => {
     );
   });
 
-  it("제목과 곡을 함께 저장한다", async () => {
-    const { client, query } = fakeClient({ data: [{ id: "p1" }], error: null });
+  it("제목과 곡을 함께 저장하고 새 저장 시각을 돌려준다", async () => {
+    const { client, query } = fakeClient({
+      data: [{ updated_at: "t2" }],
+      error: null,
+    });
     const song = { ...createEmptySong(), title: "새 곡" };
-    await saveProject(client, "p1", song);
+    expect(await saveProject(client, "p1", song)).toBe("t2");
     expect(query.update).toHaveBeenCalledWith({ title: "새 곡", song });
+    expect(query.eq).toHaveBeenCalledTimes(1);
+  });
+
+  it("본 시각을 주면 DB 값이 같을 때만 저장하고, 0행이면 충돌로 본다", async () => {
+    const { client, query } = fakeClient({ data: [], error: null });
+    await expect(
+      saveProject(client, "p1", createEmptySong(), "t1"),
+    ).rejects.toThrow("project-conflict");
+    expect(query.eq).toHaveBeenCalledWith("updated_at", "t1");
   });
 });
 
@@ -79,10 +91,10 @@ describe("loadProject", () => {
     const song = createEmptySong();
     expect(
       await loadProject(
-        fakeClient({ data: { song }, error: null }).client,
+        fakeClient({ data: { song, updated_at: "t1" }, error: null }).client,
         "p1",
       ),
-    ).toEqual({ status: "ok", song });
+    ).toEqual({ status: "ok", song, updatedAt: "t1" });
     expect(
       await loadProject(
         fakeClient({ data: { song: { title: "깨진 곡" } }, error: null })
