@@ -1,12 +1,12 @@
 "use client";
-// ③ 반주 패널: 장르 카드와 빠르기 슬라이더. 고르는 즉시 반주가 다시 만들어집니다.
+// ③ 반주 패널: 장르 카드, 빠르기 슬라이더, AI 리터치. 고르는 즉시 반주가 다시 만들어집니다.
 // 제목과 한 줄 설명은 스튜디오 틀이 그립니다.
 import { useState } from "react";
-import { Soon } from "@/app/_components/Soon";
 import { analyzeSong, STYLE_BPM_RANGE, STYLE_LABEL } from "@/lib/music";
 import { stepsPerBar } from "@/lib/transport";
 import { useSongStore } from "@/store/songStore";
 import { STYLES, type Style } from "@/types/song";
+import { RetouchBox } from "./RetouchBox";
 import { useAccompanimentSync } from "./useAccompanimentSync";
 
 export const BPM_MIN = 60;
@@ -72,10 +72,7 @@ export function ArrangePanel() {
         </p>
       </div>
 
-      <div className="flex items-center gap-2 rounded-xl border-2 border-dashed border-line-dashed px-4 py-3 text-[14px] text-ink-muted">
-        곡 구성 (인트로 · 벌스 · 코러스)
-        <Soon />
-      </div>
+      <RetouchBox />
     </div>
   );
 }
