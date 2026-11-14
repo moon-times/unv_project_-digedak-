@@ -26,10 +26,7 @@ const analysis = {
   bpmSuggestion: 100,
   explanation: "멜로디에 C, E, G 음이 많이 쓰여 C장조로 판단했습니다.",
 };
-const body = {
-  melody: [{ pitch: 60, start: 0, duration: 4, velocity: 0.8 }],
-  analysis,
-};
+const body = { analysis };
 const call = async (payload: unknown) => {
   const response = await POST(
     new Request("https://app.example/api/analyze", {
@@ -53,7 +50,14 @@ afterEach(() => {
 
 describe("POST /api/analyze", () => {
   it("형식이 틀리면 400, LLM 안 부름", async () => {
-    expect((await call({ melody: "x" })).status).toBe(400);
+    expect((await call({ analysis: "x" })).status).toBe(400);
+    // LLM에 그대로 가는 글자는 길이를 막습니다.
+    const longChord = { symbol: "C".repeat(13), start: 0, duration: 16 };
+    for (const big of [
+      { ...analysis, key: "가".repeat(21) },
+      { ...analysis, chords: [longChord] },
+    ])
+      expect((await call({ analysis: big })).status).toBe(400);
     expect(
       (
         await call({
@@ -83,6 +87,7 @@ describe("POST /api/analyze", () => {
     });
     expect(supabase.rpc).toHaveBeenCalledWith("consume_llm_quota", {
       daily_limit: DAILY_POLISH_LIMIT,
+      usage_kind: "polish",
     });
     expect(polish).toHaveBeenCalledWith(
       expect.objectContaining({ keyName: "C장조", styleLabel: "팝" }),

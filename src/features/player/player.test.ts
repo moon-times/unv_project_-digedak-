@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 // 테스트 환경(jsdom)에는 오디오가 없으므로 Tone·smplr·AudioContext를 가짜로 바꿔
 // 재생기의 상태 흐름과 예약 내용만 확인합니다. 실제 소리는 브라우저에서 확인합니다.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";

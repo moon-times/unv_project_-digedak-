@@ -46,6 +46,8 @@ export function RecordPanel() {
   const hasMelody = useSongStore((s) => s.song.melody.length > 0);
   const setBpm = useSongStore((s) => s.setBpm);
   const [countIn, setCountIn] = useState(true);
+  // 빠르기 칸에 치는 중인 글자. "120"을 치는 도중의 1 · 12가 곡에 들어가지 않게 칸을 벗어날 때만 넣습니다.
+  const [bpmDraft, setBpmDraft] = useState<string | null>(null);
   const [phase, setPhase] = useState<Phase>({ kind: "idle" });
   const [live] = useState(createLiveStore);
   const session = useRef<RecordingSession | null>(null);
@@ -87,7 +89,8 @@ export function RecordPanel() {
     // 재생과 녹음이 동시에 소리를 내지 않게 먼저 멈춥니다.
     player.stop();
     live.reset();
-    const recordBpm = clampBpm(bpm);
+    // 빠르기 칸에서 바로 이 버튼을 누르면 방금 넣은 값이 아직 다시 그려지기 전일 수 있어 store에서 읽습니다.
+    const recordBpm = clampBpm(useSongStore.getState().song.bpm);
     bpmRef.current = recordBpm;
     if (recordBpm !== bpm) setBpm(recordBpm);
     setPhase({ kind: "opening" });
@@ -143,13 +146,16 @@ export function RecordPanel() {
               inputMode="numeric"
               min={BPM_MIN}
               max={BPM_MAX}
-              value={bpm}
+              value={bpmDraft ?? bpm}
               disabled={busy}
-              onChange={(e) => {
-                const value = Number(e.target.value);
-                if (Number.isFinite(value) && value > 0) setBpm(value);
+              onChange={(e) => setBpmDraft(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+              onBlur={() => {
+                const value = Number(bpmDraft);
+                if (bpmDraft !== null && Number.isFinite(value) && value > 0)
+                  setBpm(clampBpm(value));
+                setBpmDraft(null);
               }}
-              onBlur={() => setBpm(clampBpm(bpm))}
               className="h-11 w-20 rounded-xl border-2 border-ink bg-surface px-3 text-center font-display text-[20px] tabular-nums disabled:opacity-50"
             />
             <span className="text-[15px] text-ink-muted">BPM</span>

@@ -273,25 +273,6 @@ export class Player {
     }
   }
 
-  /** 모든 소리를 끄고 오디오를 닫습니다. 다시 쓰려면 init()부터 합니다. */
-  async dispose(): Promise<void> {
-    cancelAnimationFrame(this.#frame);
-    this.#parts.forEach((part) => part.dispose());
-    this.#parts = [];
-    this.#partsSong = null;
-    this.#instruments.forEach(({ instrument }) => instrument.dispose());
-    this.#instruments.clear();
-    const audio = this.#audio;
-    this.#audio = null;
-    this.#initPromise = null;
-    this.#endEventId = null;
-    if (audio) {
-      audio.tone.getTransport().stop();
-      await audio.context.close();
-    }
-    this.#setState(INITIAL_PLAYER_STATE);
-  }
-
   // ── 내부 ────────────────────────────────────────────────────────────
 
   #currentStep(): number {

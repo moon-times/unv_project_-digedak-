@@ -15,11 +15,6 @@ export function usePlayerState(): PlayerState {
   );
 }
 
-/** 재생 위치(step)만 필요할 때. 타임라인의 재생선 표시용 */
-export function usePlaybackStep(): number {
-  return usePlayerState().step;
-}
-
 /**
  * store의 곡이 바뀌면 재생기에 반영합니다. 스튜디오 화면에서 한 번만 부릅니다.
  * 화면이 사라지면 재생을 멈춥니다.

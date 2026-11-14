@@ -16,37 +16,48 @@ const NO_PRIVILEGE = "42501";
 // SongState는 JSON으로 그대로 저장되는 순수 데이터라 jsonb 타입으로 바꿔 넣습니다.
 const toJson = (song: SongState) => song as unknown as Json;
 
-/** 새 프로젝트를 만들고 id를 돌려줍니다. user_id는 DB 기본값(auth.uid())이 채웁니다. */
+/** 새 프로젝트를 만들고 id와 저장 시각(updated_at)을 돌려줍니다. user_id는 DB 기본값(auth.uid())이 채웁니다. */
 export async function createProject(
   supabase: Client,
   song: SongState,
-): Promise<string> {
+): Promise<{ id: string; updatedAt: string }> {
   const { data, error } = await supabase
     .from("projects")
     .insert({ title: song.title, song: toJson(song) })
-    .select("id")
+    .select("id, updated_at")
     .single();
   if (error) throw error;
-  return data.id;
+  return { id: data.id, updatedAt: data.updated_at };
 }
 
-/** 곡 전체와 제목을 저장합니다. RLS로 막히면 오류 대신 0행이 되므로 0행도 실패로 봅니다. */
+/** saveProject가 던지는 오류: 내가 마지막으로 본 뒤에 다른 탭 · 기기가 곡을 저장함 */
+export const PROJECT_CONFLICT = "project-conflict";
+
+/**
+ * 곡 전체와 제목을 저장하고 새 저장 시각을 돌려줍니다. RLS로 막히면 오류 대신 0행이 되므로 0행도 실패로 봅니다.
+ * @param seenUpdatedAt 내가 마지막으로 불러오거나 저장한 시각. 주면 DB 값이 그대로일 때만 저장하고,
+ *   그새 다른 탭이 저장했으면 덮어쓰지 않고 PROJECT_CONFLICT를 던집니다 (명세 09 §3-5).
+ */
 export async function saveProject(
   supabase: Client,
   id: string,
   song: SongState,
-): Promise<void> {
-  const { data, error } = await supabase
+  seenUpdatedAt?: string,
+): Promise<string> {
+  let query = supabase
     .from("projects")
     .update({ title: song.title, song: toJson(song) })
-    .eq("id", id)
-    .select("id");
+    .eq("id", id);
+  if (seenUpdatedAt) query = query.eq("updated_at", seenUpdatedAt);
+  const { data, error } = await query.select("updated_at");
   if (error) throw error;
-  if (data.length === 0) throw new Error("project-not-found");
+  if (data.length === 0)
+    throw new Error(seenUpdatedAt ? PROJECT_CONFLICT : "project-not-found");
+  return data[0].updated_at;
 }
 
 export type LoadResult =
-  | { status: "ok"; song: SongState }
+  | { status: "ok"; song: SongState; updatedAt: string }
   | { status: "not-found" }
   | { status: "invalid" };
 
@@ -57,7 +68,7 @@ export async function loadProject(
 ): Promise<LoadResult> {
   const { data, error } = await supabase
     .from("projects")
-    .select("song")
+    .select("song, updated_at")
     .eq("id", id)
     .maybeSingle();
   // 주소의 id가 UUID 형식이 아니거나(/studio/abc, 22P02) 로그인하지 않았으면(42501)
@@ -68,7 +79,7 @@ export async function loadProject(
   if (!data) return { status: "not-found" };
   const parsed = SongStateSchema.safeParse(data.song);
   return parsed.success
-    ? { status: "ok", song: parsed.data }
+    ? { status: "ok", song: parsed.data, updatedAt: data.updated_at }
     : { status: "invalid" };
 }
 

@@ -15,6 +15,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Claude 세션별 worktree (그 안의 .next · node_modules까지 검사하지 않게)
+    ".claude/**",
   ]),
 ]);
 

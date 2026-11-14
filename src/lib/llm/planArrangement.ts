@@ -17,6 +17,11 @@ import {
 } from "@/types/song";
 
 export const RETOUCH_MODEL = "claude-sonnet-5-5";
+/**
+ * 이보다 긴 곡은 LLM에 보내지 않습니다 (계획 구간 상한과 같은 값, 30초 녹음은 180BPM이어도 23마디).
+ * 저장된 곡은 사용자가 DB에 직접 쓸 수 있어, 상한이 없으면 음표 하나로 수백만 마디 요약을 만들게 할 수 있습니다.
+ */
+export const MAX_RETOUCH_BARS = 64;
 
 /** LLM이 돌려주는 계획 (전환 상태 enabled는 화면이 정합니다) */
 export type ArrangementDraft = Omit<ArrangementPlan, "enabled">;
@@ -184,7 +189,7 @@ export async function planArrangement(
 ): Promise<ArrangementDraft | null> {
   const anthropic = getClient();
   const barCount = countBars(song);
-  if (!anthropic || barCount === 0) return null;
+  if (!anthropic || barCount === 0 || barCount > MAX_RETOUCH_BARS) return null;
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
       const parsed = ArrangementDraftSchema.safeParse(

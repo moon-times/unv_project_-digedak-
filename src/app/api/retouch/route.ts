@@ -3,13 +3,15 @@
 // docs/specs/08_llm-retouch/design.md §5
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { DAILY_POLISH_LIMIT } from "@/app/api/analyze/route";
 import { planArrangement } from "@/lib/llm/planArrangement";
 import { loadProject } from "@/lib/supabase/projects";
 import { createClient } from "@/lib/supabase/server";
 
 /** 프로젝트 하나에서 리터치를 쓸 수 있는 횟수 (2026-11-14 사용자 결정) */
 export const RETOUCH_LIMIT = 3;
+
+/** 회원 한 명이 하루(한국 시간)에 리터치로 LLM을 부를 수 있는 횟수. 설명 다듬기 한도와 따로 셉니다 (2026-11-15 사용자 결정) */
+export const DAILY_RETOUCH_LIMIT = 10;
 
 const ProjectIdSchema = z.uuid();
 
@@ -74,11 +76,11 @@ export async function POST(request: Request) {
   // 키가 없는 환경(로컬 · 미리보기)에서는 계획을 못 만드니 하루 한도도 깎지 않습니다.
   if (!process.env.ANTHROPIC_API_KEY)
     return NextResponse.json({ error: "failed", remaining });
-  // LLM을 부르기 전에 사용자별 하루 한도(설명 다듬기와 함께 씀)를 먼저 깎습니다.
+  // LLM을 부르기 전에 사용자별 하루 리터치 한도를 먼저 깎습니다.
   // 프로젝트 횟수는 성공한 뒤에 깎으므로, 이것이 없으면 동시 요청 · 새 프로젝트로 LLM을 끝없이 부를 수 있습니다.
   const { data: allowed, error: quotaError } = await supabase.rpc(
     "consume_llm_quota",
-    { daily_limit: DAILY_POLISH_LIMIT },
+    { daily_limit: DAILY_RETOUCH_LIMIT, usage_kind: "retouch" },
   );
   if (quotaError) {
     console.error("LLM 하루 한도를 확인하지 못했어요", quotaError);

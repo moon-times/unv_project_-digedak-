@@ -17,7 +17,8 @@ vi.mock("@/lib/supabase/projects", () => ({ loadProject: load }));
 const plan = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/llm/planArrangement", () => ({ planArrangement: plan }));
 
-const { GET, POST, RETOUCH_LIMIT } = await import("./route");
+const { GET, POST, RETOUCH_LIMIT, DAILY_RETOUCH_LIMIT } =
+  await import("./route");
 
 const ID = "7d6b2c1e-3f4a-4b5c-8d9e-0a1b2c3d4e5f";
 const song = createEmptySong();
@@ -110,7 +111,8 @@ describe("POST /api/retouch", () => {
       remaining: RETOUCH_LIMIT,
     });
     expect(supabase.rpc).toHaveBeenCalledWith("consume_llm_quota", {
-      daily_limit: expect.any(Number),
+      daily_limit: DAILY_RETOUCH_LIMIT,
+      usage_kind: "retouch",
     });
     expect(plan).not.toHaveBeenCalled();
     expect(consumeCalls()).toEqual([]);

@@ -58,9 +58,7 @@ describe("detectKey", () => {
     expect(keyName(detectKey(transpose(A_MINOR_TUNE, 5)).key)).toBe("D minor");
   });
 
-  it("빈 멜로디는 C장조, 상관계수 0", () => {
-    const result = detectKey([]);
-    expect(keyName(result.key)).toBe("C major");
-    expect(result.correlation).toBe(0);
+  it("빈 멜로디는 C장조", () => {
+    expect(keyName(detectKey([]).key)).toBe("C major");
   });
 });

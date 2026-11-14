@@ -160,12 +160,20 @@ describe("RecordPanel", () => {
     expect(screen.getByRole("alert").textContent).toContain("마이크를 찾지");
   });
 
-  test("빠르기 입력은 store BPM을 바꾸고, 범위 밖은 칸을 벗어날 때 맞춘다", () => {
+  test("빠르기 입력은 칸을 벗어날 때 store BPM을 바꾸고, 범위 밖은 맞춘다", () => {
     render(<RecordPanel />);
     const input = screen.getByRole("spinbutton", { name: "빠르기" });
+    // 치는 도중의 값(1 → 12 → 120)은 곡에 들어가지 않습니다.
+    fireEvent.change(input, { target: { value: "1" } });
+    expect(song().bpm).toBe(100);
     fireEvent.change(input, { target: { value: "120" } });
+    fireEvent.blur(input);
     expect(song().bpm).toBe(120);
     fireEvent.change(input, { target: { value: "300" } });
+    fireEvent.blur(input);
+    expect(song().bpm).toBe(180);
+    // 지우기만 하고 나가면 그대로
+    fireEvent.change(input, { target: { value: "" } });
     fireEvent.blur(input);
     expect(song().bpm).toBe(180);
   });

@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { beforeEach, describe, expect, test } from "vitest";
 import { SongStateSchema } from "@/lib/schemas";
 import { createEmptySong } from "@/types/song";

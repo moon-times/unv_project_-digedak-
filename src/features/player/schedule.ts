@@ -58,20 +58,18 @@ export type ScheduledNote = {
 /**
  * 곡 전체를 초 단위 예약 목록으로 펼칩니다 (BPM 고정).
  * 오프라인 렌더링(WAV)처럼 처음부터 끝까지 한 번에 예약할 때 씁니다.
- * fromStep을 주면 그 위치 이후에 시작하는 음만, 그 위치를 0초로 해서 돌려줍니다.
  */
-export function scheduleSong(song: SongState, fromStep = 0): ScheduledNote[] {
+export function scheduleSong(song: SongState): ScheduledNote[] {
   const unit = secondsPerStep(song.bpm);
   const notes = trackNotes(song);
   const scheduled: ScheduledNote[] = [];
   for (const track of TRACK_IDS) {
     const delays = strumDelays(track, notes[track]);
     notes[track].forEach((note, i) => {
-      if (note.start < fromStep) return;
       scheduled.push({
         track,
         pitch: note.pitch,
-        time: (note.start - fromStep) * unit + delays[i],
+        time: note.start * unit + delays[i],
         duration: note.duration * unit,
         velocity: note.velocity,
       });
