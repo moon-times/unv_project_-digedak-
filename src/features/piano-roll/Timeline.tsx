@@ -5,6 +5,7 @@
 // 보정 단계에서는 코드 줄의 코드를 눌러 다른 코드로 바꿀 수도 있습니다(ChordEditBar).
 // 색은 globals.css의 timeline · track 토큰을 씁니다 (docs/design/README.md "타임라인" · "트랙 색").
 import {
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -66,7 +67,8 @@ export function Timeline({
       timeSignature: s.song.timeSignature,
     })),
   );
-  const [sectionRef, sectionWidth] = useContentWidth<HTMLElement>();
+  const [sectionRef, attachSection, sectionWidth] =
+    useContentWidth<HTMLElement>();
   const barSteps = stepsPerBar(song.timeSignature);
   // 녹음 중에는 곡의 음보다 길게 부를 수 있으므로, 주황 재생선이 있는 마디까지 타임라인을 늘립니다.
   const totalSteps = Math.max(
@@ -136,7 +138,7 @@ export function Timeline({
 
   const timeline = (
     <section
-      ref={sectionRef}
+      ref={attachSection}
       aria-label="타임라인"
       className={`overflow-auto rounded-[20px] border-2 border-ink bg-timeline text-timeline-text ${editable ? "min-h-0 flex-1" : "h-full"}`}
     >
@@ -611,20 +613,26 @@ function EmptyLane({ text }: { text: string }) {
   );
 }
 
-/** 요소의 안쪽 폭(px). 처음 그릴 때와 ResizeObserver가 없는 환경(테스트)에서는 0 */
+/**
+ * 요소의 안쪽 폭(px). 처음 그릴 때와 ResizeObserver가 없는 환경(테스트)에서는 0.
+ * 보정 단계를 오가면 감싸는 틀이 바뀌어 요소가 새로 만들어지므로, ref 콜백으로 새 요소를 다시 지켜봅니다.
+ */
 function useContentWidth<T extends HTMLElement>() {
-  const ref = useRef<T>(null);
+  const ref = useRef<T | null>(null);
   const [width, setWidth] = useState(0);
-  useEffect(() => {
-    const element = ref.current;
+  const attach = useCallback((element: T | null) => {
+    ref.current = element;
     if (!element || typeof ResizeObserver === "undefined") return;
     const observer = new ResizeObserver(([entry]) =>
       setWidth(entry.contentRect.width),
     );
     observer.observe(element);
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      ref.current = null;
+    };
   }, []);
-  return [ref, width] as const;
+  return [ref, attach, width] as const;
 }
 
 /**

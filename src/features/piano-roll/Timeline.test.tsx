@@ -243,3 +243,27 @@ describe("코드 고치기 (보정 단계)", () => {
     expect(screen.queryByRole("group", { name: "코드 고치기" })).toBeNull();
   });
 });
+
+describe("Timeline 폭 재기", () => {
+  test("보정 단계를 오가 타임라인 상자가 새로 생겨도 새 상자의 폭을 잰다", () => {
+    const observed: Element[] = [];
+    const original = globalThis.ResizeObserver;
+    globalThis.ResizeObserver = class {
+      observe(element: Element) {
+        observed.push(element);
+      }
+      unobserve() {}
+      disconnect() {}
+    } as unknown as typeof ResizeObserver;
+    try {
+      const { container, rerender } = render(<Timeline />);
+      rerender(<Timeline editable />);
+      rerender(<Timeline />);
+      const section = container.querySelector("section");
+      expect(observed.at(-1)).toBe(section);
+      expect(observed.length).toBeGreaterThan(1);
+    } finally {
+      globalThis.ResizeObserver = original;
+    }
+  });
+});
