@@ -57,14 +57,15 @@ export function ProjectCard({ project }: { project: ProjectSummary }) {
       <div className="flex items-center justify-between text-[13px] text-ink-muted">
         <span>{updated}</span>
         {/* 카드 전체가 링크라 메뉴는 그 위로 올려 따로 눌리게 합니다. */}
-        <details className="relative z-10">
+        <details className="relative z-10 open:z-20">
           <summary
             aria-label={`${project.title || "제목 없는 곡"} 메뉴`}
             className="flex size-11 cursor-pointer list-none items-center justify-center rounded-full text-lg hover:bg-ink/10"
           >
             ···
           </summary>
-          <div className="absolute right-0 bottom-10 flex w-40 flex-col rounded-xl border-2 border-ink bg-surface p-1 text-[14px] text-ink">
+          {/* 목업처럼 버튼 아래로 엽니다. 위로 열면 카드 제목 · 화면 제목을 가립니다. */}
+          <div className="absolute top-full right-0 mt-1 flex w-52 flex-col rounded-xl border-2 border-ink bg-surface p-1 text-[14px] whitespace-nowrap text-ink shadow-[0_3px_0_var(--color-ink)]">
             <Link
               href={`/studio/${project.id}`}
               className="rounded-lg px-3 py-2 hover:bg-ink/10"
