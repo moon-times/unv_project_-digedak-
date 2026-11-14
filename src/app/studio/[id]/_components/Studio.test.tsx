@@ -233,3 +233,31 @@ describe("내보내기 버튼", () => {
     expect(exportButton()).toHaveProperty("disabled", true);
   });
 });
+
+describe("로그인하고 돌아왔을 때 (명세 06)", () => {
+  const exportHeading = () =>
+    screen.queryByRole("heading", { name: "내보내기", hidden: true });
+
+  beforeEach(() => {
+    HTMLDialogElement.prototype.showModal = function () {
+      this.open = true;
+    };
+    window.history.replaceState(null, "", "/studio/new?export=1");
+  });
+  afterEach(() => window.history.replaceState(null, "", "/"));
+
+  test("주소에 export=1이 있고 회원이면 내보내기 팝업이 열리고 표시는 주소에서 사라진다", () => {
+    auth.state = { user: { id: "u1" }, loading: false };
+    useSongStore.getState().setMelody([note]);
+    render(<Studio projectId={null} />);
+
+    expect(exportHeading()).not.toBeNull();
+    expect(window.location.search).toBe("");
+  });
+
+  test("게스트로 오면 열지 않는다", () => {
+    useSongStore.getState().setMelody([note]);
+    render(<Studio projectId={null} />);
+    expect(exportHeading()).toBeNull();
+  });
+});

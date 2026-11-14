@@ -114,6 +114,6 @@ describe("게스트 내보내기", () => {
       screen
         .getByRole("link", { name: "로그인하고 저장하기" })
         .getAttribute("href"),
-    ).toBe("/login?next=/studio/p1");
+    ).toBe(`/login?next=${encodeURIComponent("/studio/p1?export=1")}`);
   });
 });
