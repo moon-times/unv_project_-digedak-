@@ -16,7 +16,7 @@ import { analyzeSong, koreanKeyName, parseKey, STYLE_LABEL } from "@/lib/music";
 import { useAuthUser } from "@/lib/supabase/useAuthUser";
 import { stepsPerBar } from "@/lib/transport";
 import { useSongStore } from "@/store/songStore";
-import type { AnalysisResult } from "@/types/song";
+import type { AnalysisResult, Chord } from "@/types/song";
 
 /** 지금 곡을 분석합니다. apply면 store에 키 · 코드 · 설명(첫 분석이면 장르도)을 넣습니다 */
 function analyzeCurrentSong({ apply }: { apply: boolean }): AnalysisResult {
@@ -45,7 +45,13 @@ export function RefinePanel() {
   // AI 재추천 (명세 11): 진행 중 · 결과 안내 · 되돌리기용 바로 앞 코드
   const [recommending, setRecommending] = useState(false);
   const [recommendNote, setRecommendNote] = useState("");
-  const [previous, setPrevious] = useState<RecommendSnapshot | null>(null);
+  const [undo, setUndo] = useState<{
+    previous: RecommendSnapshot;
+    applied: Chord[];
+  } | null>(null);
+  // 재추천 뒤 코드를 직접 고쳤으면 되돌리기가 그 수정까지 덮지 않도록 버튼을 숨깁니다.
+  const chords = useSongStore((s) => s.song.chords);
+  const canUndo = undo !== null && chords === undo.applied;
   // 추천 장르 · BPM은 store에 없으므로 마지막 분석 결과를 패널에 둡니다.
   // 코드가 이미 있으면(저장된 곡) store는 건드리지 않고 추천만 다시 계산합니다.
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(() => {
@@ -79,7 +85,8 @@ export function RefinePanel() {
     setRecommendNote("AI가 코드를 고르는 중...");
     const outcome = await recommendForCurrentSong(kind);
     setRecommending(false);
-    if (outcome.status === "applied") setPrevious(outcome.previous);
+    if (outcome.status === "applied")
+      setUndo({ previous: outcome.previous, applied: outcome.applied });
     setRecommendNote(noteFor(outcome));
   }
   const suggested = analysis?.bpmSuggestion;
@@ -126,7 +133,7 @@ export function RefinePanel() {
           type="button"
           disabled={recommending}
           onClick={() => {
-            setPrevious(null);
+            setUndo(null);
             setRecommendNote("");
             setAnalysis(analyzeCurrentSong({ apply: true }));
           }}
@@ -145,12 +152,12 @@ export function RefinePanel() {
             {kind === "brighter" ? "더 밝게" : "더 슬프게"}
           </button>
         ))}
-        {previous && !recommending && (
+        {canUndo && !recommending && (
           <button
             type="button"
             onClick={() => {
-              undoRecommend(previous);
-              setPrevious(null);
+              undoRecommend(undo.previous);
+              setUndo(null);
               setRecommendNote("추천 전 코드로 되돌렸어요.");
             }}
             className="min-h-11 rounded-full px-3 text-[15px] font-semibold underline underline-offset-4"
@@ -177,6 +184,8 @@ function noteFor(outcome: RecommendOutcome): string {
       return `코드 ${outcome.changed}개를 바꿨어요. 마음에 안 들면 [되돌리기]를 누르세요.`;
     case "no-change":
       return "멜로디와 어울리는 다른 코드를 찾지 못했어요.";
+    case "stale":
+      return "기다리는 사이 곡이 바뀌어서 추천을 넣지 않았어요. 다시 눌러 주세요.";
     case "limited":
       return "오늘 추천을 다 썼어요. 내일 다시 쓸 수 있어요.";
     case "unavailable":

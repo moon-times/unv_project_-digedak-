@@ -129,13 +129,53 @@ describe("RefinePanel", () => {
       true,
     );
 
-    await act(async () => finish({ status: "applied", changed: 2, previous }));
+    await act(async () =>
+      finish({
+        status: "applied",
+        changed: 2,
+        previous,
+        applied: song().chords,
+      }),
+    );
     expect(screen.getByRole("status").textContent).toContain(
       "코드 2개를 바꿨어요",
     );
     fireEvent.click(screen.getByRole("button", { name: "되돌리기" }));
     expect(recommender.undoRecommend).toHaveBeenCalledWith(previous);
     expect(screen.queryByRole("button", { name: "되돌리기" })).toBeNull();
+  });
+
+  test("회원: 재추천 뒤 코드를 직접 고치면 되돌리기가 사라진다", async () => {
+    auth.user = { id: "u1" };
+    useSongStore.getState().setMelody(melody);
+    render(<RefinePanel />);
+    recommender.recommendForCurrentSong.mockResolvedValue({
+      status: "applied",
+      changed: 1,
+      previous: { chords: [] },
+      applied: song().chords,
+    });
+    await act(async () =>
+      fireEvent.click(screen.getByRole("button", { name: "더 밝게" })),
+    );
+    expect(screen.getByRole("button", { name: "되돌리기" })).toBeTruthy();
+    act(() =>
+      useSongStore
+        .getState()
+        .setChords([{ symbol: "Am", start: 0, duration: 32 }]),
+    );
+    expect(screen.queryByRole("button", { name: "되돌리기" })).toBeNull();
+  });
+
+  test("회원: 기다리는 사이 곡이 바뀌면 그렇게 안내", async () => {
+    auth.user = { id: "u1" };
+    useSongStore.getState().setMelody(melody);
+    render(<RefinePanel />);
+    recommender.recommendForCurrentSong.mockResolvedValue({ status: "stale" });
+    await act(async () =>
+      fireEvent.click(screen.getByRole("button", { name: "더 슬프게" })),
+    );
+    expect(screen.getByRole("status").textContent).toContain("곡이 바뀌어서");
   });
 
   test("회원: 한도 · 못 찾음 안내", async () => {

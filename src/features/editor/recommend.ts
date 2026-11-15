@@ -11,8 +11,14 @@ export type RecommendKind = "brighter" | "sadder";
 export type RecommendSnapshot = { chords: Chord[]; explanation?: string };
 
 export type RecommendOutcome =
-  | { status: "applied"; changed: number; previous: RecommendSnapshot }
-  | { status: "no-change" | "limited" | "unavailable" | "failed" };
+  | {
+      status: "applied";
+      changed: number;
+      previous: RecommendSnapshot;
+      /** 곡에 넣은 코드 배열. 곡의 코드가 이 배열 그대로일 때만 되돌리기를 보여 줍니다. */
+      applied: Chord[];
+    }
+  | { status: "no-change" | "stale" | "limited" | "unavailable" | "failed" };
 
 /** 지금 곡의 코드를 다시 추천받아, 바뀐 코드가 있으면 곡에 넣습니다. */
 export async function recommendForCurrentSong(
@@ -54,12 +60,17 @@ export async function recommendForCurrentSong(
     const store = useSongStore.getState();
     // 기다리는 사이 다시 분석 · 녹음 · 다른 곡으로 옮겼으면 버립니다.
     if (store.song.chords !== song.chords || store.song.melody !== song.melody)
-      return { status: "failed" };
+      return { status: "stale" };
     const previous = { chords: song.chords, explanation: song.explanation };
     markPolished(result.explanation);
     store.setChords(result.chords);
     store.setExplanation(result.explanation);
-    return { status: "applied", changed: result.changed, previous };
+    return {
+      status: "applied",
+      changed: result.changed,
+      previous,
+      applied: result.chords,
+    };
   } catch {
     return { status: "failed" };
   }

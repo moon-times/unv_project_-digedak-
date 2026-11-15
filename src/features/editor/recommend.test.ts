@@ -51,6 +51,7 @@ describe("recommendForCurrentSong (명세 11)", () => {
       status: "applied",
       changed: 1,
       previous: { chords: oldChords, explanation: "원래 설명" },
+      applied: newChords,
     });
     expect(song().chords).toEqual(newChords);
     expect(song().explanation).toBe("Ab으로 바꿨어요.");
@@ -80,7 +81,7 @@ describe("recommendForCurrentSong (명세 11)", () => {
     expect((await recommendForCurrentSong("brighter")).status).toBe("failed");
   });
 
-  it("기다리는 사이 다시 분석했으면 결과를 버린다", async () => {
+  it("기다리는 사이 다시 분석했으면 결과를 버리고 stale로 알린다", async () => {
     let respond: (value: unknown) => void = () => {};
     fetchMock.mockReturnValue(new Promise((resolve) => (respond = resolve)));
     const pending = recommendForCurrentSong("brighter");
@@ -95,7 +96,7 @@ describe("recommendForCurrentSong (명세 11)", () => {
         explanation: "x",
       }),
     );
-    expect((await pending).status).toBe("failed");
+    expect((await pending).status).toBe("stale");
     expect(song().chords[0].symbol).toBe("Am");
   });
 });
