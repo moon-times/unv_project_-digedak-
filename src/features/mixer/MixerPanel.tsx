@@ -146,8 +146,8 @@ function ReverbSection({
 }) {
   const sends = reverbSends(tracks);
   return (
-    <details className="rounded-xl border-2 border-ink bg-surface px-3 py-2">
-      <summary className="flex min-h-9 cursor-pointer items-center text-[14px] font-semibold">
+    <details className="rounded-xl border-2 border-ink bg-surface px-3 py-1">
+      <summary className="flex min-h-7 cursor-pointer items-center text-[14px] font-semibold">
         울림 (리버브)
       </summary>
       <p className="mb-1 text-[12px] text-ink-muted">
