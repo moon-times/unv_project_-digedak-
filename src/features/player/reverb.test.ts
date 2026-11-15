@@ -72,7 +72,7 @@ describe("impulseResponse", () => {
 });
 
 describe("connectReverb", () => {
-  it("트랙 게인 뒤에서 보내기 게인 → Convolver → 출력(0.5) → destination", () => {
+  it("트랙 게인 뒤에서 보내기 게인 → Convolver → 출력(3) → destination", () => {
     const context = fakeContext();
     const channels = Object.fromEntries(
       TRACK_IDS.map((id) => [id, { connect: vi.fn() }]),
@@ -88,7 +88,7 @@ describe("connectReverb", () => {
     const output = context.createGain.mock.results[0].value;
     expect(convolver.buffer).not.toBeNull();
     expect(convolver.connect).toHaveBeenCalledWith(output);
-    expect(output.gain.value).toBe(0.5);
+    expect(output.gain.value).toBe(3);
     expect(output.connect).toHaveBeenCalledWith(destination);
     for (const id of TRACK_IDS) {
       expect(channels[id].connect).toHaveBeenCalledWith(sends[id]);

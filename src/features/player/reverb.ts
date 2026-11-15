@@ -4,16 +4,16 @@ import { TRACK_IDS, type Track, type TrackId } from "@/types/song";
 
 /** 울림 길이(초). WAV 끝 여유(render.ts tailSeconds)는 이보다 길어야 꼬리가 안 잘립니다. */
 export const REVERB_SECONDS = 1.8;
-/** 울림 출력 크기. 보내는 양을 올려도 전체 소리가 크게 커지지 않게 둡니다. */
-const RETURN_GAIN = 0.5;
+/** 울림 출력 크기. Convolver 정규화로 울림이 원음보다 약 18dB 작아서, 보내는 양 100%일 때 원음과 비슷하게(약 -2.5dB) 키웁니다. */
+const RETURN_GAIN = 3;
 
 /** 곡에 값이 없을 때의 보내는 양 (2026-11-15 사용자 결정). 곡에 써 넣지 않아 예전 곡을 열어도 저장이 돌지 않습니다. */
 export const DEFAULT_REVERB: Record<TrackId, number> = {
-  melody: 0.2,
-  drums: 0.1,
+  melody: 0.3,
+  drums: 0.15,
   bass: 0,
-  keys: 0.2,
-  guitar: 0.15,
+  keys: 0.3,
+  guitar: 0.2,
 };
 
 /** 트랙별 보내는 양 0 ~ 1. 곡에 값이 있으면 그 값, 없으면 기본값 */

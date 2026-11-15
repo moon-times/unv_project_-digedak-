@@ -72,8 +72,8 @@ describe("울림 (명세 12)", () => {
     const { container } = render(<MixerPanel />);
     expect(container.querySelector("details")!.open).toBe(false);
     const melody = screen.getByLabelText("멜로디 울림") as HTMLInputElement;
-    expect(melody.value).toBe("20");
-    expect(melody.getAttribute("aria-valuetext")).toBe("20%");
+    expect(melody.value).toBe("30");
+    expect(melody.getAttribute("aria-valuetext")).toBe("30%");
     expect(
       (screen.getByLabelText("베이스 울림") as HTMLInputElement).value,
     ).toBe("0");
