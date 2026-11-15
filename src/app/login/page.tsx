@@ -5,7 +5,7 @@ import { safeNext } from "@/lib/auth/redirect";
 import { createClient } from "@/lib/supabase/server";
 import { Logo } from "../_components/Logo";
 import mascot from "../icon.png";
-import { LoginForm } from "./LoginForm";
+import { LoginForm, type Mode } from "./LoginForm";
 
 // docs/specs/01_email-login.md §4. 사용자를 읽는 부분은 Cache Components 규칙상 Suspense 안에 둡니다.
 export default function LoginPage({ searchParams }: PageProps<"/login">) {
@@ -47,6 +47,9 @@ export default function LoginPage({ searchParams }: PageProps<"/login">) {
   );
 }
 
+const toMode = (value: string | undefined): Mode =>
+  value === "signup" || value === "reset" ? value : "login";
+
 const first = (value: string | string[] | undefined) =>
   Array.isArray(value) ? value[0] : value;
 
@@ -62,7 +65,7 @@ async function LoginGate({
 
   return (
     <LoginForm
-      initialMode={first(params.mode) === "signup" ? "signup" : "login"}
+      initialMode={toMode(first(params.mode))}
       next={next}
       notice={first(params.notice)}
     />

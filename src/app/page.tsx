@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Suspense, type ReactNode } from "react";
+import { Suspense, use, type ReactNode } from "react";
 import { Logo } from "./_components/Logo";
 import mascot from "./icon.png";
 import { DrumIcon, MicIcon, NoteIcon } from "./landing-icons";
@@ -8,9 +8,12 @@ import { AUTH_LINK_CLASS, LandingAuthLink } from "./LandingAuthLink";
 
 // 랜딩. 로그인 여부를 읽는 두 자리만 요청 때 채우고, 나머지는 미리 만들어 둔 화면입니다.
 // docs/specs/03_landing/design.md
-export default function Home() {
+export default function Home({ searchParams }: PageProps<"/">) {
   return (
     <main className="flex min-h-dvh flex-col bg-paper break-keep text-ink">
+      <Suspense>
+        <DeletedNotice searchParams={searchParams} />
+      </Suspense>
       <header className="flex items-center justify-between px-6 py-5 md:px-12">
         <Logo />
         <AuthSlot variant="header" />
@@ -76,6 +79,23 @@ export default function Home() {
         </footer>
       </section>
     </main>
+  );
+}
+
+/** 회원탈퇴 뒤 안내 (명세 13 D3) */
+function DeletedNotice({
+  searchParams,
+}: {
+  searchParams: PageProps<"/">["searchParams"];
+}) {
+  if (use(searchParams).notice !== "account-deleted") return null;
+  return (
+    <p
+      role="status"
+      className="border-b-2 border-ink bg-surface px-6 py-3 text-center"
+    >
+      탈퇴했어요. 그동안 고마웠어요
+    </p>
   );
 }
 

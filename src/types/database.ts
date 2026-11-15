@@ -101,6 +101,7 @@ export type Database = {
         Args: { max_count: number; target: string }
         Returns: boolean
       }
+      delete_my_account: { Args: never; Returns: undefined }
       retouch_used: { Args: { target: string }; Returns: number }
       under_project_limit: { Args: never; Returns: boolean }
     }

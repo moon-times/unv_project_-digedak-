@@ -1,5 +1,5 @@
-// 메일 확인 링크와 GitHub · Google 로그인이 돌아오는 곳. PKCE code를 세션으로 바꾸고 원래 화면으로 보냅니다.
-// docs/specs/01_email-login.md §4, docs/specs/10_social-login/design.md §4
+// 메일 확인 링크, 비밀번호 재설정 링크, GitHub · Google 로그인이 돌아오는 곳. PKCE code를 세션으로 바꾸고 원래 화면으로 보냅니다.
+// docs/specs/01_email-login.md §4, docs/specs/10_social-login/design.md §4, docs/specs/13_account/design.md §2
 import { isAuthPKCECodeVerifierMissingError } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
 import { safeNext } from "@/lib/auth/redirect";
@@ -11,12 +11,17 @@ export async function GET(request: NextRequest) {
   // Host 헤더를 조합하지 않고 Next가 파싱한 origin만 씁니다.
   const to = (path: string) => NextResponse.redirect(new URL(path, origin));
   // OAuth(LoginForm이 via=oauth를 붙임)는 취소 · 실패를 메일 링크 오류와 다르게 안내합니다.
-  const oauth = searchParams.get("via") === "oauth";
+  const via = searchParams.get("via");
+  const oauth = via === "oauth";
   const next = safeNext(searchParams.get("next"));
   // 실패해도 돌아갈 곳을 넘겨, 다시 로그인하면 원래 화면(게스트 곡 등)으로 가게 합니다.
   const notice = (kind: string) =>
     `/login?notice=${kind}&next=${encodeURIComponent(next)}`;
-  const failed = notice(oauth ? "oauth-error" : "link-error");
+  // 재설정 링크(via=recovery)는 다른 브라우저 · 만료 모두 메일을 다시 요청하라고 안내합니다.
+  const failed =
+    via === "recovery"
+      ? "/login?notice=reset-error&mode=reset"
+      : notice(oauth ? "oauth-error" : "link-error");
 
   if (searchParams.has("error") || !code) return to(failed);
 
@@ -26,7 +31,7 @@ export async function GET(request: NextRequest) {
 
   // 다른 브라우저에서 링크를 열면 이 브라우저에 PKCE 검증값이 없습니다. 메일 인증 자체는 끝난 상태입니다.
   return to(
-    !oauth && isAuthPKCECodeVerifierMissingError(error)
+    via === null && isAuthPKCECodeVerifierMissingError(error)
       ? notice("confirmed")
       : failed,
   );

@@ -101,3 +101,31 @@ it("실패해도 돌아갈 곳(next)을 로그인 화면에 넘긴다 (취소 �
     "https://app.example/login?notice=oauth-error&next=%2Fprojects",
   );
 });
+
+describe("/auth/callback (비밀번호 재설정, 명세 13)", () => {
+  const resetError = "https://app.example/login?notice=reset-error&mode=reset";
+
+  it("error · code 없음 · 교환 실패 · 다른 브라우저 모두 재설정 안내", async () => {
+    expect(await callback("?via=recovery&error=access_denied")).toBe(
+      resetError,
+    );
+    expect(await callback("?via=recovery")).toBe(resetError);
+    exchangeCodeForSession.mockResolvedValue({
+      error: new AuthPKCECodeVerifierMissingError(),
+    });
+    expect(await callback("?via=recovery&code=abc")).toBe(resetError);
+    exchangeCodeForSession.mockResolvedValue({
+      error: new AuthApiError("expired", 403, "otp_expired"),
+    });
+    expect(await callback("?via=recovery&code=abc")).toBe(resetError);
+  });
+
+  it("성공하면 새 비밀번호 화면으로", async () => {
+    exchangeCodeForSession.mockResolvedValue({ error: null });
+    expect(
+      await callback(
+        `?via=recovery&code=abc&next=${encodeURIComponent("/account/password")}`,
+      ),
+    ).toBe("https://app.example/account/password");
+  });
+});

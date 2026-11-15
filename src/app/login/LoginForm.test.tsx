@@ -7,6 +7,7 @@ const auth = vi.hoisted(() => ({
   signUp: vi.fn(),
   signInWithPassword: vi.fn(),
   signInWithOAuth: vi.fn(),
+  resetPasswordForEmail: vi.fn(),
 }));
 vi.mock("@/lib/supabase/client", () => ({ createClient: () => ({ auth }) }));
 vi.mock("next/navigation", () => ({
@@ -17,6 +18,7 @@ beforeEach(() => {
   auth.signUp.mockReset();
   auth.signInWithPassword.mockReset();
   auth.signInWithOAuth.mockReset();
+  auth.resetPasswordForEmail.mockReset();
 });
 afterEach(cleanup);
 
@@ -123,4 +125,66 @@ describe("GitHub · Google 로그인 (명세 10)", () => {
 it("모르는 notice(toString 등)는 안내를 띄우지 않는다", () => {
   render(<LoginForm initialMode="login" next="/projects" notice="toString" />);
   expect(screen.queryByRole("status")).toBeNull();
+});
+
+describe("비밀번호 재설정 (명세 13)", () => {
+  function requestReset(email: string) {
+    const { container } = render(
+      <LoginForm initialMode="login" next="/projects" notice={null} />,
+    );
+    fireEvent.change(screen.getByLabelText("이메일"), {
+      target: { value: email },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "비밀번호를 잊었나요?" }),
+    );
+    fireEvent.submit(container.querySelector("form")!);
+  }
+
+  it("[비밀번호를 잊었나요?]는 입력한 이메일을 두고 이메일 하나만 받는다", () => {
+    render(<LoginForm initialMode="login" next="/projects" notice={null} />);
+    fireEvent.change(screen.getByLabelText("이메일"), {
+      target: { value: "me@example.com" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "비밀번호를 잊었나요?" }),
+    );
+    expect((screen.getByLabelText("이메일") as HTMLInputElement).value).toBe(
+      "me@example.com",
+    );
+    expect(screen.queryByLabelText("비밀번호")).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "재설정 메일 받기" }),
+    ).toBeTruthy();
+  });
+
+  it("재설정 링크는 콜백을 거쳐 새 비밀번호 화면으로 (via=recovery)", async () => {
+    auth.resetPasswordForEmail.mockResolvedValue({ error: null });
+    requestReset("me@example.com");
+    expect((await screen.findByRole("status")).textContent).toContain(
+      "me@example.com로 재설정 메일을 보냈어요",
+    );
+    expect(auth.resetPasswordForEmail).toHaveBeenCalledWith("me@example.com", {
+      redirectTo: `${window.location.origin}/auth/callback?next=%2Faccount%2Fpassword&via=recovery`,
+    });
+  });
+
+  it("발송 한도 등 오류는 다시 시도 안내", async () => {
+    auth.resetPasswordForEmail.mockResolvedValue({
+      error: { code: "over_email_send_rate_limit" },
+    });
+    requestReset("me@example.com");
+    expect((await screen.findByRole("alert")).textContent).toContain(
+      "지금은 메일을 보낼 수 없어요",
+    );
+  });
+
+  it("재설정 링크 실패 안내", () => {
+    render(
+      <LoginForm initialMode="reset" next="/projects" notice="reset-error" />,
+    );
+    expect(screen.getByRole("status").textContent).toContain(
+      "재설정 링크가 만료됐거나",
+    );
+  });
 });

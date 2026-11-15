@@ -4,10 +4,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useSyncExternalStore, type SubmitEvent } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Soon } from "../_components/Soon";
 
-export type Notice = "confirmed" | "link-error" | "oauth-error";
-type Mode = "login" | "signup";
+export type Notice = "confirmed" | "link-error" | "oauth-error" | "reset-error";
+export type Mode = "login" | "signup" | "reset";
 type Provider = "github" | "google";
 
 // 미리보기 주소는 Supabase Redirect URLs에 없어서 OAuth가 운영으로 튕깁니다 (명세 01 보안 결정, 명세 10 R5).
@@ -18,7 +17,10 @@ const NOTICE_TEXT: Record<Notice, string> = {
   confirmed: "메일 인증을 마쳤다면 로그인해 주세요",
   "link-error": "링크가 만료됐거나 잘못됐어요. 다시 시도해 주세요",
   "oauth-error": "GitHub · Google 로그인을 마치지 못했어요. 다시 시도해 주세요",
+  "reset-error":
+    "재설정 링크가 만료됐거나 다른 브라우저에서 열렸어요. 메일을 요청한 브라우저에서 다시 요청해 주세요",
 };
+const SEND_FAILED = "지금은 메일을 보낼 수 없어요. 잠시 뒤 다시 시도해 주세요";
 const MIN_PASSWORD = 8;
 const noSubscribe = () => () => {};
 
@@ -89,6 +91,17 @@ export function LoginForm({
     setError(null);
     const supabase = createClient();
 
+    if (mode === "reset") {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent("/account/password")}&via=recovery`,
+      });
+      setPending(false);
+      // Supabase는 가입 안 된 이메일에도 성공으로 답하므로, 오류는 발송 한도 · 네트워크뿐입니다 (명세 13 P2)
+      if (error) setError(SEND_FAILED);
+      else setSentTo(email);
+      return;
+    }
+
     if (mode === "login") {
       const { error } = await supabase.auth.signInWithPassword({
         email,
@@ -120,31 +133,45 @@ export function LoginForm({
     setPending(false);
     // 가입 여부를 드러내지 않도록 이미 가입된 이메일도 같은 안내 (명세 §3)
     if (!error || error.code === "user_already_exists") setSentTo(email);
-    else setError("지금은 메일을 보낼 수 없어요. 잠시 뒤 다시 시도해 주세요");
+    else setError(SEND_FAILED);
   }
 
   return (
     <div className="w-full max-w-[400px]">
-      <div
-        role="tablist"
-        className="mb-6 flex rounded-full border-2 border-ink bg-surface p-1"
-      >
-        {(["login", "signup"] as const).map((value) => (
-          <button
-            key={value}
-            type="button"
-            role="tab"
-            aria-selected={mode === value}
-            onClick={() => switchMode(value)}
-            className="min-h-11 flex-1 rounded-full text-[15px] font-semibold aria-selected:bg-ink aria-selected:text-surface"
-          >
-            {value === "login" ? "로그인" : "회원가입"}
-          </button>
-        ))}
-      </div>
+      {mode === "reset" ? (
+        <button
+          type="button"
+          onClick={() => switchMode("login")}
+          className="mb-6 min-h-11 text-sm font-semibold underline"
+        >
+          ← 로그인으로 돌아가기
+        </button>
+      ) : (
+        <div
+          role="tablist"
+          className="mb-6 flex rounded-full border-2 border-ink bg-surface p-1"
+        >
+          {(["login", "signup"] as const).map((value) => (
+            <button
+              key={value}
+              type="button"
+              role="tab"
+              aria-selected={mode === value}
+              onClick={() => switchMode(value)}
+              className="min-h-11 flex-1 rounded-full text-[15px] font-semibold aria-selected:bg-ink aria-selected:text-surface"
+            >
+              {value === "login" ? "로그인" : "회원가입"}
+            </button>
+          ))}
+        </div>
+      )}
 
       <h2 className="mb-4 font-display text-[28px]">
-        {mode === "login" ? "다시 오셨네요" : "처음 오셨네요"}
+        {mode === "login"
+          ? "다시 오셨네요"
+          : mode === "signup"
+            ? "처음 오셨네요"
+            : "비밀번호 재설정"}
       </h2>
 
       {notice && (
@@ -161,8 +188,9 @@ export function LoginForm({
           role="status"
           className="rounded-xl border-2 border-ink bg-surface p-4"
         >
-          확인 메일을 {sentTo}로 보냈어요. 메일의 링크를 누르면 로그인돼요. 이미
-          가입했다면 로그인해 주세요.
+          {mode === "reset"
+            ? `${sentTo}로 재설정 메일을 보냈어요. 가입한 이메일이라면 곧 도착해요. 메일의 링크는 이 브라우저에서 열어 주세요.`
+            : `확인 메일을 ${sentTo}로 보냈어요. 메일의 링크를 누르면 로그인돼요. 이미 가입했다면 로그인해 주세요.`}
         </p>
       ) : (
         <form onSubmit={onSubmit} className="flex flex-col gap-3">
@@ -181,33 +209,40 @@ export function LoginForm({
               className={inputClass}
             />
           </div>
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center justify-between gap-2">
-              <label htmlFor="login-password" className="text-sm font-semibold">
-                비밀번호
-              </label>
-              {mode === "login" && (
-                // 비밀번호 재설정은 다음 명세
-                <span className="flex items-center gap-1.5 text-xs text-ink-muted">
-                  비밀번호를 잊었나요?
-                  <Soon />
-                </span>
-              )}
+          {mode !== "reset" && (
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center justify-between gap-2">
+                <label
+                  htmlFor="login-password"
+                  className="text-sm font-semibold"
+                >
+                  비밀번호
+                </label>
+                {mode === "login" && (
+                  <button
+                    type="button"
+                    onClick={() => switchMode("reset")}
+                    className="text-xs text-ink-muted underline"
+                  >
+                    비밀번호를 잊었나요?
+                  </button>
+                )}
+              </div>
+              <input
+                id="login-password"
+                type="password"
+                required
+                autoComplete={
+                  mode === "login" ? "current-password" : "new-password"
+                }
+                minLength={mode === "signup" ? MIN_PASSWORD : undefined}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                aria-describedby={error ? "login-error" : undefined}
+                className={inputClass}
+              />
             </div>
-            <input
-              id="login-password"
-              type="password"
-              required
-              autoComplete={
-                mode === "login" ? "current-password" : "new-password"
-              }
-              minLength={mode === "signup" ? MIN_PASSWORD : undefined}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              aria-describedby={error ? "login-error" : undefined}
-              className={inputClass}
-            />
-          </div>
+          )}
           {error && (
             <p id="login-error" role="alert" className="text-sm text-danger">
               {error}
@@ -218,7 +253,7 @@ export function LoginForm({
             disabled={pending}
             className="mt-2 min-h-[52px] rounded-full border-2 border-ink bg-primary text-[17px] font-bold text-on-primary shadow-[0_4px_0_var(--color-ink)] disabled:opacity-50"
           >
-            {pending ? "잠시만요..." : mode === "login" ? "로그인" : "가입하기"}
+            {pending ? "잠시만요..." : SUBMIT_LABEL[mode]}
           </button>
         </form>
       )}
@@ -260,6 +295,12 @@ export function LoginForm({
     </div>
   );
 }
+
+const SUBMIT_LABEL: Record<Mode, string> = {
+  login: "로그인",
+  signup: "가입하기",
+  reset: "재설정 메일 받기",
+};
 
 const inputClass =
   "min-h-11 rounded-xl border-2 border-ink bg-surface px-3 text-base placeholder:text-ink-muted";
