@@ -5,7 +5,7 @@ import { safeNext } from "@/lib/auth/redirect";
 import { createClient } from "@/lib/supabase/server";
 import { Logo } from "../_components/Logo";
 import mascot from "../icon.png";
-import { LoginForm, type Notice } from "./LoginForm";
+import { LoginForm } from "./LoginForm";
 
 // docs/specs/01_email-login.md §4. 사용자를 읽는 부분은 Cache Components 규칙상 Suspense 안에 둡니다.
 export default function LoginPage({ searchParams }: PageProps<"/login">) {
@@ -60,16 +60,11 @@ async function LoginGate({
   const { data } = await supabase.auth.getClaims();
   if (data?.claims) redirect(next);
 
-  const notice = first(params.notice);
   return (
     <LoginForm
       initialMode={first(params.mode) === "signup" ? "signup" : "login"}
       next={next}
-      notice={
-        notice === "confirmed" || notice === "link-error"
-          ? (notice as Notice)
-          : null
-      }
+      notice={first(params.notice)}
     />
   );
 }

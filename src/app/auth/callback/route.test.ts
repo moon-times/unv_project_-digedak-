@@ -37,10 +37,10 @@ describe("/auth/callback", () => {
 
   it("code가 없거나 error가 오면 교환하지 않고 링크 오류 안내", async () => {
     expect(await callback("")).toBe(
-      "https://app.example/login?notice=link-error",
+      "https://app.example/login?notice=link-error&next=%2Fprojects",
     );
     expect(await callback("?error=access_denied&code=abc")).toBe(
-      "https://app.example/login?notice=link-error",
+      "https://app.example/login?notice=link-error&next=%2Fprojects",
     );
     expect(exchangeCodeForSession).not.toHaveBeenCalled();
   });
@@ -50,7 +50,7 @@ describe("/auth/callback", () => {
       error: new AuthPKCECodeVerifierMissingError(),
     });
     expect(await callback("?code=abc")).toBe(
-      "https://app.example/login?notice=confirmed",
+      "https://app.example/login?notice=confirmed&next=%2Fprojects",
     );
 
     exchangeCodeForSession.mockResolvedValue({
@@ -61,7 +61,43 @@ describe("/auth/callback", () => {
       ),
     });
     expect(await callback("?code=garbage")).toBe(
-      "https://app.example/login?notice=link-error",
+      "https://app.example/login?notice=link-error&next=%2Fprojects",
     );
   });
+});
+
+describe("/auth/callback (OAuth, 명세 10)", () => {
+  it("취소 · code 없음 · 교환 실패는 모두 OAuth 안내", async () => {
+    expect(await callback("?via=oauth&error=access_denied")).toBe(
+      "https://app.example/login?notice=oauth-error&next=%2Fprojects",
+    );
+    expect(await callback("?via=oauth")).toBe(
+      "https://app.example/login?notice=oauth-error&next=%2Fprojects",
+    );
+    exchangeCodeForSession.mockResolvedValue({
+      error: new AuthPKCECodeVerifierMissingError(),
+    });
+    expect(await callback("?via=oauth&code=abc")).toBe(
+      "https://app.example/login?notice=oauth-error&next=%2Fprojects",
+    );
+  });
+
+  it("성공하면 검사한 next로", async () => {
+    exchangeCodeForSession.mockResolvedValue({ error: null });
+    expect(
+      await callback(
+        `?via=oauth&code=abc&next=${encodeURIComponent("/studio/new?export=1")}`,
+      ),
+    ).toBe("https://app.example/studio/new?export=1");
+  });
+});
+
+it("실패해도 돌아갈 곳(next)을 로그인 화면에 넘긴다 (취소 뒤 다시 로그인하면 게스트 곡으로)", async () => {
+  const next = encodeURIComponent("/studio/new?export=1");
+  expect(await callback(`?via=oauth&error=access_denied&next=${next}`)).toBe(
+    `https://app.example/login?notice=oauth-error&next=${next}`,
+  );
+  expect(await callback("?via=oauth&error=access_denied&next=//evil.com")).toBe(
+    "https://app.example/login?notice=oauth-error&next=%2Fprojects",
+  );
 });
