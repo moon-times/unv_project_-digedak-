@@ -1,10 +1,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Suspense, type ReactNode } from "react";
+import { Suspense } from "react";
 import { LIST_LIMIT, listProjects } from "@/lib/supabase/projects";
 import { createClient } from "@/lib/supabase/server";
-import { Logo } from "../_components/Logo";
+import { AccountLink, AppHeader } from "../_components/AppHeader";
 import mascot from "../icon.png";
 import { LogoutButton } from "./LogoutButton";
 import { ProjectCard } from "./ProjectCard";
@@ -16,7 +16,7 @@ export default function ProjectsPage() {
       <Suspense
         fallback={
           <>
-            <Header />
+            <AppHeader current="projects" />
             <p className="px-8 py-8 text-ink-muted">불러오는 중...</p>
           </>
         }
@@ -24,22 +24,6 @@ export default function ProjectsPage() {
         <Projects />
       </Suspense>
     </main>
-  );
-}
-
-function Header({ account }: { account?: ReactNode }) {
-  return (
-    <header className="flex min-h-[65px] flex-wrap items-center gap-x-6 gap-y-2 border-b-2 border-ink bg-surface px-8 py-2">
-      <Logo />
-      <Link
-        href="/projects"
-        aria-current="page"
-        className="border-b-2 border-ink py-1 font-semibold"
-      >
-        내 프로젝트
-      </Link>
-      <div className="ml-auto flex items-center gap-3">{account}</div>
-    </header>
   );
 }
 
@@ -55,16 +39,11 @@ async function Projects() {
 
   return (
     <>
-      <Header
+      <AppHeader
+        current="projects"
         account={
           <>
-            <span
-              aria-hidden="true"
-              className="flex size-9 items-center justify-center rounded-full border-2 border-ink bg-paper font-display text-[16px] uppercase"
-            >
-              {email.charAt(0)}
-            </span>
-            <span className="hidden text-ink-muted sm:inline">{email}</span>
+            <AccountLink email={email} />
             <LogoutButton />
           </>
         }
