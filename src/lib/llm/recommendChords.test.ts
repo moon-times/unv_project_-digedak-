@@ -62,17 +62,24 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllEnvs());
 
 describe("recommendSummary", () => {
-  it("후보(빌려 온 화음 포함)와 구간마다 멜로디 · 점수, 빈 구간은 점수 없음", () => {
+  it("후보(빌려 온 화음 포함)와 구간마다 멜로디 · 검사를 통과하는 코드만 options로", () => {
     const summary = recommendSummary(input, C_MAJOR);
     expect(summary.key).toBe("C장조");
     expect(
       summary.candidates.some((c) => c.symbol === "Fm" && c.borrowed),
     ).toBe(true);
     expect(summary.sections[0].melody).toEqual(["C", "E", "G"]);
-    expect(summary.sections[0].scores!.C).toBeGreaterThan(
-      summary.sections[0].scores!.Eb,
+    // 첫 구간의 으뜸화음(C)은 그대로 둠
+    expect(summary.sections[0].options).toEqual([]);
+    // 미만 있는 2마디(C): 지금 코드는 빼고, 미를 품은 Em은 있음, 부딪히는 Eb · A♭(Fm)은 없음
+    expect(summary.sections[2].options).not.toContain("C");
+    expect(summary.sections[2].options).toContain("Em");
+    expect(summary.sections[2].options).not.toContain("Eb");
+    expect(summary.sections[2].options).not.toContain("Fm");
+    // 빈 구간은 후보 전부(지금 코드 빼고)
+    expect(summary.sections[3].options).toHaveLength(
+      summary.candidates.length - 1,
     );
-    expect(summary.sections[3].scores).toBeNull();
   });
 });
 
@@ -82,12 +89,12 @@ describe("applySuggestions", () => {
       { index: 1, symbol: "Fm" }, // 점수는 0.7이지만 멜로디 라가 Fm의 라♭과 반음으로 부딪힘 → 버림
       { index: 2, symbol: "Eb" }, // 미만 부르는 마디에 Eb → 버림
       { index: 3, symbol: "Ab" }, // 멜로디 없는 마디 → 바꿈
-      { index: 0, symbol: "Em" }, // 미 · 솔이 구성음, 점수 0.5 → 바꿈
+      { index: 0, symbol: "Em" }, // 첫 구간의 으뜸화음 → 그대로 둠
       { index: 9, symbol: "C" },
-      { index: 0, symbol: "Cmaj9" },
+      { index: 1, symbol: "Cmaj9" },
     ]);
-    expect(chords.map((c) => c.symbol)).toEqual(["Em", "F", "C", "Ab"]);
-    expect(changed).toBe(2);
+    expect(chords.map((c) => c.symbol)).toEqual(["C", "F", "C", "Ab"]);
+    expect(changed).toBe(1);
     expect(chords[3]).toEqual({ symbol: "Ab", start: 48, duration: 16 });
   });
 
@@ -136,6 +143,19 @@ describe("recommendChords", () => {
     const result = await recommendChords(input);
     expect(result!.explanation).not.toContain("Dm7");
     expect(result!.explanation).toContain("Ab");
+  });
+
+  it("키 이름 속 으뜸음(C장조의 C)은 진행에 C가 없어도 코드 이름으로 걸리지 않음", async () => {
+    create.mockResolvedValue(
+      reply({ changes: [], reason: "C장조 곡이라 그대로 뒀어요." }),
+    );
+    const noTonic = {
+      ...input,
+      chords: input.chords.map((c) => ({ ...c, symbol: "F" })),
+    };
+    expect((await recommendChords(noTonic))!.explanation).toBe(
+      "C장조 곡이라 그대로 뒀어요.",
+    );
   });
 
   it("형식 오류는 한 번 더 묻고, 두 번 다 틀리거나 거절 · 오류 · 키 없음이면 null", async () => {
