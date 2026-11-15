@@ -46,13 +46,8 @@ export const TrackSchema: z.ZodType<Track> = z.object({
   volume: z.number(),
   muted: z.boolean(),
   solo: z.boolean(),
-  effects: z
-    .object({
-      reverb: z.number().optional(),
-      eqLow: z.number().optional(),
-      eqHigh: z.number().optional(),
-    })
-    .optional(),
+  // 예전에 저장된 eqLow · eqHigh는 z.object가 버리고 읽습니다.
+  effects: z.object({ reverb: z.number().optional() }).optional(),
 });
 
 export const ArrangementSectionSchema: z.ZodType<ArrangementSection> = z.object(
@@ -108,8 +103,6 @@ export const SongStateSchema: z.ZodType<SongState> = z.object({
   recording: z
     .object({
       path: z.string(),
-      trimStart: z.number().optional(),
-      trimEnd: z.number().optional(),
     })
     .optional(),
 });
