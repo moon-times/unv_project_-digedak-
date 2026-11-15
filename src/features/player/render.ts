@@ -3,6 +3,7 @@
 import { TRACK_IDS, type SongState, type TrackId } from "@/types/song";
 import { createInstrument, noteFor, toMidiVelocity } from "./instruments";
 import { trackGains } from "./mix";
+import { connectReverb, REVERB_SECONDS, reverbSends } from "./reverb";
 import { playbackEndStep, scheduleSong, secondsPerStep } from "./schedule";
 
 export type RenderOptions = {
@@ -27,7 +28,11 @@ const RENDER_QUANTUM = 128;
  */
 export async function renderSong(
   song: SongState,
-  { sampleRate = 44100, tailSeconds = 2, onProgress }: RenderOptions = {},
+  {
+    sampleRate = 44100,
+    tailSeconds = Math.max(2, REVERB_SECONDS + 0.2),
+    onProgress,
+  }: RenderOptions = {},
 ): Promise<AudioBuffer> {
   const smplr = await import("smplr");
   const seconds =
@@ -45,6 +50,12 @@ export async function renderSong(
     channels[id].gain.value = gains[id];
     channels[id].connect(context.destination);
   }
+  connectReverb(
+    context,
+    channels,
+    context.destination,
+    reverbSends(song.tracks),
+  );
 
   // smplr 기본 스케줄러는 0.2초 뒤의 음을 큐에 넣고 실시간 타이머로 보내는데, 오프라인 렌더링은
   // 실시간보다 빨리 끝나서 큐에 남은 음이 빠집니다. 모든 음을 미리 예약하도록 앞보기를 무한으로 둡니다.

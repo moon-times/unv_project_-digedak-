@@ -91,6 +91,17 @@ class FakeAudioContext {
   destination = {};
   resume = vi.fn(async () => {});
   close = vi.fn(async () => {});
+  sampleRate = 44100;
+  createConvolver() {
+    return { buffer: null, connect: vi.fn() };
+  }
+  createBuffer(channels: number, length: number) {
+    const data = Array.from(
+      { length: channels },
+      () => new Float32Array(length),
+    );
+    return { getChannelData: (c: number) => data[c] };
+  }
   createGain() {
     const gain = {
       gain: { value: 1, setTargetAtTime: vi.fn() },
@@ -237,6 +248,27 @@ describe("Player", () => {
     );
     expect(fake.state.gains[1].setTargetAtTime).toHaveBeenLastCalledWith(
       1,
+      0,
+      0.01,
+    );
+  });
+
+  it("울림 양을 보내기 게인에 반영한다 (명세 12)", async () => {
+    const player = new Player();
+    await player.load(SONG);
+    await player.init();
+    // gains[0] 마스터, 1~5 트랙, 6 울림 출력, 7~11 트랙별 보내기 (TRACK_IDS 순서)
+    const tracks = SONG.tracks.map((t) =>
+      t.id === "melody" ? { ...t, effects: { reverb: 0.6 } } : t,
+    );
+    player.applyMix(tracks);
+    expect(fake.state.gains[7].setTargetAtTime).toHaveBeenLastCalledWith(
+      0.6,
+      0,
+      0.01,
+    );
+    expect(fake.state.gains[9].setTargetAtTime).toHaveBeenLastCalledWith(
+      0,
       0,
       0.01,
     );

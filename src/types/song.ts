@@ -27,7 +27,7 @@ export type Track = {
   volume: number; // dB
   muted: boolean;
   solo: boolean;
-  effects?: { reverb?: number }; // 리버브 보내는 양 0 ~ 1 (명세 12, 아직 안 씀)
+  effects?: { reverb?: number }; // 리버브 보내는 양 0 ~ 1 (명세 12, 없으면 player/reverb.ts 기본값)
 };
 
 export const STYLES = ["pop", "ballad", "rock"] as const;
