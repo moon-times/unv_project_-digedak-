@@ -27,7 +27,7 @@ export type Track = {
   volume: number; // dB
   muted: boolean;
   solo: boolean;
-  effects?: { reverb?: number; eqLow?: number; eqHigh?: number };
+  effects?: { reverb?: number }; // 리버브 보내는 양 0 ~ 1 (명세 12, 아직 안 씀)
 };
 
 export const STYLES = ["pop", "ballad", "rock"] as const;
@@ -87,7 +87,7 @@ export type SongState = {
   accompaniment?: Accompaniment; // 반주 엔진 결과 (타임라인 반주 줄 표시용)
   arrangement?: ArrangementPlan; // AI 리터치 편곡 계획. 없으면 장르 기본 반주
   tracks: Track[];
-  recording?: { path: string; trimStart?: number; trimEnd?: number };
+  recording?: { path: string }; // Storage 녹음 경로 {user_id}/{project_id}.{확장자}
 };
 
 /** 규칙 엔진(analyzeSong)과 /api/analyze가 함께 쓰는 분석 결과 형식 */

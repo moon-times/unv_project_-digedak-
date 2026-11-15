@@ -159,7 +159,7 @@ type Track = {
   volume: number;     // dB
   muted: boolean;
   solo: boolean;
-  effects?: { reverb?: number; eqLow?: number; eqHigh?: number };
+  effects?: { reverb?: number }; // 리버브 보내는 양 0 ~ 1
 };
 
 type SongState = {
@@ -174,7 +174,7 @@ type SongState = {
   explanation?: string;   // AI 분석 설명 (규칙 엔진 기본 설명 또는 LLM이 다듬은 설명)
   accompaniment?: { drums: Note[]; bass: Note[]; keys: Note[] };  // 반주 엔진 결과 (타임라인 반주 줄 표시용)
   tracks: Track[];
-  recording?: { path: string; trimStart?: number; trimEnd?: number };
+  recording?: { path: string };
 };
 ```
 

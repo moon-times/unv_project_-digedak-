@@ -87,3 +87,17 @@ describe("편곡 계획 (명세 08)", () => {
     expect(bad({ endBar: 0 })).toBe(false);
   });
 });
+
+test("예전에 저장된 eqLow · eqHigh · trimStart · trimEnd는 버리고 읽는다", () => {
+  const song = createEmptySong();
+  const parsed = SongStateSchema.parse({
+    ...song,
+    tracks: song.tracks.map((t) => ({
+      ...t,
+      effects: { reverb: 0.2, eqLow: 1, eqHigh: -1 },
+    })),
+    recording: { path: "u/p.webm", trimStart: 0.5, trimEnd: 3 },
+  });
+  expect(parsed.tracks[0].effects).toEqual({ reverb: 0.2 });
+  expect(parsed.recording).toEqual({ path: "u/p.webm" });
+});

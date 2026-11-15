@@ -86,3 +86,13 @@ describe("useAccompanimentSync (#27)", () => {
     expect(useSongStore.getState().dirty).toBe(false);
   });
 });
+
+test("DB에서 읽어 키 순서가 바뀐 반주도 같은 반주로 본다 (열 때마다 저장되지 않게)", () => {
+  // jsonb는 객체 키를 길이순으로 정렬해 돌려줍니다: bass · keys · drums · guitar, 음표는 pitch · start · duration · velocity
+  const { drums, bass, keys, guitar } = accompanimentFor(song());
+  const fromDb = JSON.parse(JSON.stringify({ bass, keys, drums, guitar }));
+  useSongStore.getState().setAccompaniment(fromDb);
+  useSongStore.getState().markSaved();
+  renderHook(() => useAccompanimentSync({ create: false }));
+  expect(useSongStore.getState().dirty).toBe(false);
+});

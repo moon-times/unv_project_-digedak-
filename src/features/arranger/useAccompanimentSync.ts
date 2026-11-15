@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { stepsPerBar } from "@/lib/transport";
 import { useSongStore } from "@/store/songStore";
-import type { Accompaniment, SongState } from "@/types/song";
+import type { Accompaniment, Note, SongState } from "@/types/song";
 import { generateAccompaniment } from "./generate";
 
 /** 곡의 코드 · 장르 · 빠르기 · 박자 · 편곡 계획으로 만든 반주 */
@@ -14,8 +14,25 @@ export function accompanimentFor(song: SongState): Accompaniment {
   });
 }
 
+const PARTS = ["drums", "bass", "keys", "guitar"] as const;
+
+const sameNote = (a: Note, b: Note) =>
+  a.pitch === b.pitch &&
+  a.start === b.start &&
+  a.duration === b.duration &&
+  a.velocity === b.velocity;
+
+// DB(jsonb)는 객체 키 순서를 바꿔 돌려주므로(길이순) 반주를 통째로 JSON.stringify해 비교하면
+// 내용이 같아도 늘 달라 보여, 곡을 열 때마다 자동 저장이 돌았습니다. 값만 비교합니다.
 function sameAccompaniment(a: Accompaniment | undefined, b: Accompaniment) {
-  return a !== undefined && JSON.stringify(a) === JSON.stringify(b);
+  return (
+    a !== undefined &&
+    PARTS.every(
+      (part) =>
+        a[part].length === b[part].length &&
+        a[part].every((note, i) => sameNote(note, b[part][i])),
+    )
+  );
 }
 
 /**
