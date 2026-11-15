@@ -102,6 +102,7 @@ export type Database = {
         Returns: boolean
       }
       retouch_used: { Args: { target: string }; Returns: number }
+      under_project_limit: { Args: never; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
