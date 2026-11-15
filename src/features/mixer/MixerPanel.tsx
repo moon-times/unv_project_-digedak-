@@ -1,10 +1,10 @@
 "use client";
-// ④ 믹싱 패널: 트랙마다 볼륨 · 뮤트 · 솔로, 멜로디 · 기타는 악기. 값은 store의 tracks에 들어가고,
+// ④ 믹싱 패널: 트랙마다 볼륨 · 뮤트 · 솔로, 멜로디 · 기타는 악기, 펼치면 울림 양. 값은 store의 tracks에 들어가고,
 // 재생기는 useSyncPlayerWithSong이 tracks 변경을 받아 게인만 바꿉니다(@/features/player/mix).
 // 제목과 한 줄 설명은 스튜디오 틀이 그립니다.
-import { Soon } from "@/app/_components/Soon";
-// 스튜디오 테스트가 "@/features/player"를 가짜로 바꾸므로 악기 목록은 파일에서 직접 가져옵니다.
+// 스튜디오 테스트가 "@/features/player"를 가짜로 바꾸므로 악기 목록 · 울림 기본값은 파일에서 직접 가져옵니다.
 import { INSTRUMENT_CHOICES } from "@/features/player/instruments";
+import { reverbSends } from "@/features/player/reverb";
 import { useSongStore } from "@/store/songStore";
 import type { Track, TrackId } from "@/types/song";
 
@@ -52,10 +52,12 @@ export function MixerPanel() {
           />
         ))}
       </ul>
-      <div className="flex items-center gap-2 rounded-xl border-2 border-dashed border-line-dashed px-3 py-2 text-[13px] text-ink-muted">
-        울림 (리버브)
-        <Soon />
-      </div>
+      <ReverbSection
+        tracks={tracks}
+        onChange={(track, reverb) =>
+          updateTrack(track.id, { effects: { ...track.effects, reverb } })
+        }
+      />
     </div>
   );
 }
@@ -131,6 +133,54 @@ function TrackStrip({
         </select>
       )}
     </li>
+  );
+}
+
+/** 울림(리버브) 양. 기본은 접혀 있어 트랙 줄 높이는 그대로입니다 (명세 12 §4). */
+function ReverbSection({
+  tracks,
+  onChange,
+}: {
+  tracks: Track[];
+  onChange: (track: Track, reverb: number) => void;
+}) {
+  const sends = reverbSends(tracks);
+  return (
+    <details className="rounded-xl border-2 border-ink bg-surface px-3 py-2">
+      <summary className="flex min-h-9 cursor-pointer items-center text-[14px] font-semibold">
+        울림 (리버브)
+      </summary>
+      <p className="mb-1 text-[12px] text-ink-muted">
+        같은 공간에서 연주하는 것처럼 소리를 조금씩 울려요.
+      </p>
+      <ul className="flex flex-col gap-1 pb-1">
+        {tracks.map((track) => {
+          const percent = Math.round(sends[track.id] * 100);
+          const label = `${TRACK_LABELS[track.id]} 울림`;
+          return (
+            <li key={track.id} className="flex items-center gap-2">
+              <span className="w-14 shrink-0 text-[13px]">
+                {TRACK_LABELS[track.id]}
+              </span>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                step={5}
+                value={percent}
+                aria-label={label}
+                aria-valuetext={`${percent}%`}
+                onChange={(e) => onChange(track, Number(e.target.value) / 100)}
+                className="min-w-0 flex-1 accent-primary"
+              />
+              <span className="w-10 shrink-0 text-right text-[12px] text-ink-muted tabular-nums">
+                {percent}%
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </details>
   );
 }
 

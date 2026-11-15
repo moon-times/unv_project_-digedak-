@@ -65,3 +65,29 @@ describe("악기 고르기", () => {
     expect(track("guitar").instrument).toBe("distortion_guitar");
   });
 });
+
+describe("울림 (명세 12)", () => {
+  test("기본은 접혀 있고, 기본값을 %로 보여 주며 저장하지 않는다", () => {
+    useSongStore.getState().markSaved();
+    const { container } = render(<MixerPanel />);
+    expect(container.querySelector("details")!.open).toBe(false);
+    const melody = screen.getByLabelText("멜로디 울림") as HTMLInputElement;
+    expect(melody.value).toBe("20");
+    expect(melody.getAttribute("aria-valuetext")).toBe("20%");
+    expect(
+      (screen.getByLabelText("베이스 울림") as HTMLInputElement).value,
+    ).toBe("0");
+    expect(track("melody").effects).toBeUndefined();
+    expect(useSongStore.getState().dirty).toBe(false);
+  });
+
+  test("슬라이더는 그 트랙의 effects.reverb만 0 ~ 1로 바꾼다", () => {
+    render(<MixerPanel />);
+    fireEvent.change(screen.getByLabelText("건반 울림"), {
+      target: { value: "45" },
+    });
+    expect(track("keys").effects).toEqual({ reverb: 0.45 });
+    expect(track("melody").effects).toBeUndefined();
+    expect(screen.getByText("45%")).toBeTruthy();
+  });
+});
