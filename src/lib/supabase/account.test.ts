@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { GUEST_DRAFT_KEY } from "@/store/songStore";
 import type { Database } from "@/types/database";
-import { deleteAccount } from "./account";
+import { deleteAccount, SESSION_EXPIRED } from "./account";
 
 const clearRecordingDraft = vi.hoisted(() => vi.fn(async () => {}));
 vi.mock("@/lib/recordingDraft", () => ({ clearRecordingDraft }));
@@ -83,7 +83,14 @@ describe("deleteAccount (명세 13 D3 · D6 · D7)", () => {
 
   it("세션이 유효하지 않으면 아무것도 지우지 않는다", async () => {
     mock.getUser.mockResolvedValue({ data: { user: null }, error: null });
-    await expect(deleteAccount(supabase)).rejects.toThrow();
+    await expect(deleteAccount(supabase)).rejects.toThrow(SESSION_EXPIRED);
     expect(calls).toEqual(["getUser"]);
+  });
+
+  it("서버에서 끊긴 세션(42501)도 세션 만료로 알린다", async () => {
+    mock.rpc.mockResolvedValue({
+      error: { code: "42501", message: "no active session" },
+    });
+    await expect(deleteAccount(supabase)).rejects.toThrow(SESSION_EXPIRED);
   });
 });

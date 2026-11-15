@@ -3,7 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DeleteAccountButton } from "./DeleteAccountButton";
 
 const deleteAccount = vi.hoisted(() => vi.fn());
-vi.mock("@/lib/supabase/account", () => ({ deleteAccount }));
+vi.mock("@/lib/supabase/account", () => ({
+  deleteAccount,
+  SESSION_EXPIRED: "session-expired",
+}));
 vi.mock("@/lib/supabase/client", () => ({ createClient: () => ({}) }));
 
 beforeEach(() => {
@@ -54,5 +57,17 @@ describe("DeleteAccountButton (명세 13 D1 · D2)", () => {
     expect(submitButton().textContent).toBe("탈퇴하는 중...");
     expect(submitButton().disabled).toBe(true);
     expect(deleteAccount).toHaveBeenCalledTimes(1);
+  });
+
+  it("세션이 끊겼으면 다시 로그인하라고 안내", async () => {
+    deleteAccount.mockRejectedValue(new Error("session-expired"));
+    render(<DeleteAccountButton projectCount={0} />);
+    type("탈퇴");
+    fireEvent.click(submitButton());
+    const alert = await screen.findByRole("alert", { hidden: true });
+    expect(alert.textContent).toContain("로그인이 풀렸어요");
+    expect(alert.querySelector("a")?.getAttribute("href")).toBe(
+      "/login?next=/account",
+    );
   });
 });

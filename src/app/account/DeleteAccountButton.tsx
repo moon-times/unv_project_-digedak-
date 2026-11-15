@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useRef, useState } from "react";
-import { deleteAccount } from "@/lib/supabase/account";
+import { deleteAccount, SESSION_EXPIRED } from "@/lib/supabase/account";
 import { createClient } from "@/lib/supabase/client";
 
 const CONFIRM_WORD = "탈퇴";
@@ -15,17 +16,21 @@ export function DeleteAccountButton({
   const dialog = useRef<HTMLDialogElement>(null);
   const [typed, setTyped] = useState("");
   const [pending, setPending] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<"expired" | "error" | null>(null);
 
   async function confirmDelete() {
     setPending(true);
-    setFailed(false);
+    setFailed(null);
     try {
       await deleteAccount(createClient());
       // store · 라우터 캐시까지 비우려고 전체를 새로 불러옵니다.
       window.location.replace("/?notice=account-deleted");
-    } catch {
-      setFailed(true);
+    } catch (error) {
+      setFailed(
+        error instanceof Error && error.message === SESSION_EXPIRED
+          ? "expired"
+          : "error",
+      );
       setPending(false);
     }
   }
@@ -36,7 +41,7 @@ export function DeleteAccountButton({
         type="button"
         onClick={() => {
           setTyped("");
-          setFailed(false);
+          setFailed(null);
           dialog.current?.showModal();
         }}
         className="flex min-h-11 w-fit items-center rounded-full border-2 border-danger px-5 font-semibold text-danger"
@@ -68,9 +73,22 @@ export function DeleteAccountButton({
           onChange={(e) => setTyped(e.target.value)}
           className="mt-1 min-h-11 w-full rounded-xl border-2 border-ink bg-surface px-3 text-base"
         />
-        {failed && (
+        {failed === "error" && (
           <p role="alert" className="mt-2 text-[14px] text-danger">
             탈퇴하지 못했어요. 다시 시도해 주세요
+          </p>
+        )}
+        {failed === "expired" && (
+          // 끊긴 세션으로는 탈퇴할 수 없어서(명세 13 D4) 새로 로그인하게 합니다.
+          <p role="alert" className="mt-2 text-[14px] text-danger">
+            로그인이 풀렸어요.{" "}
+            <Link
+              href="/login?next=/account"
+              className="font-semibold underline"
+            >
+              다시 로그인
+            </Link>
+            한 뒤 시도해 주세요
           </p>
         )}
         <div className="mt-5 flex justify-end gap-2">
