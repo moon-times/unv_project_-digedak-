@@ -119,3 +119,8 @@ describe("GitHub · Google 로그인 (명세 10)", () => {
     vi.unstubAllEnvs();
   });
 });
+
+it("모르는 notice(toString 등)는 안내를 띄우지 않는다", () => {
+  render(<LoginForm initialMode="login" next="/projects" notice="toString" />);
+  expect(screen.queryByRole("status")).toBeNull();
+});

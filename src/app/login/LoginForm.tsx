@@ -30,7 +30,8 @@ export function LoginForm({
   initialMode: Mode;
   /** safeNext()를 거친 경로 */
   next: string;
-  notice: Notice | null;
+  /** 쿼리의 notice 그대로. NOTICE_TEXT에 있는 값만 씁니다. */
+  notice: string | null | undefined;
 }) {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>(initialMode);
@@ -48,8 +49,13 @@ export function LoginForm({
     () => false,
   );
   // 콜백이 정한 안내(쿼리)가 먼저. OAuth 오류 해시가 따라와도 메일 링크 안내로 바꾸지 않습니다.
+  // hasOwn: "toString" 같은 값이 통과하지 않게 합니다.
+  const queryNotice =
+    initialNotice && Object.hasOwn(NOTICE_TEXT, initialNotice)
+      ? (initialNotice as Notice)
+      : null;
   const notice: Notice | null =
-    initialNotice ?? (hashError ? "link-error" : null);
+    queryNotice ?? (hashError ? "link-error" : null);
 
   const switchMode = (value: Mode) => {
     setMode(value);
