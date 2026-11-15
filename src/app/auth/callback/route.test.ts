@@ -65,3 +65,29 @@ describe("/auth/callback", () => {
     );
   });
 });
+
+describe("/auth/callback (OAuth, 명세 10)", () => {
+  it("취소 · code 없음 · 교환 실패는 모두 OAuth 안내", async () => {
+    expect(await callback("?via=oauth&error=access_denied")).toBe(
+      "https://app.example/login?notice=oauth-error",
+    );
+    expect(await callback("?via=oauth")).toBe(
+      "https://app.example/login?notice=oauth-error",
+    );
+    exchangeCodeForSession.mockResolvedValue({
+      error: new AuthPKCECodeVerifierMissingError(),
+    });
+    expect(await callback("?via=oauth&code=abc")).toBe(
+      "https://app.example/login?notice=oauth-error",
+    );
+  });
+
+  it("성공하면 검사한 next로", async () => {
+    exchangeCodeForSession.mockResolvedValue({ error: null });
+    expect(
+      await callback(
+        `?via=oauth&code=abc&next=${encodeURIComponent("/studio/new?export=1")}`,
+      ),
+    ).toBe("https://app.example/studio/new?export=1");
+  });
+});

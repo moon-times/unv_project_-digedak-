@@ -66,7 +66,9 @@ async function LoginGate({
       initialMode={first(params.mode) === "signup" ? "signup" : "login"}
       next={next}
       notice={
-        notice === "confirmed" || notice === "link-error"
+        notice === "confirmed" ||
+        notice === "link-error" ||
+        notice === "oauth-error"
           ? (notice as Notice)
           : null
       }

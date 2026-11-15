@@ -6,13 +6,18 @@ import { useState, useSyncExternalStore, type SubmitEvent } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Soon } from "../_components/Soon";
 
-export type Notice = "confirmed" | "link-error";
+export type Notice = "confirmed" | "link-error" | "oauth-error";
 type Mode = "login" | "signup";
+type Provider = "github" | "google";
+
+// 미리보기 주소는 Supabase Redirect URLs에 없어서 OAuth가 운영으로 튕깁니다 (명세 01 보안 결정, 명세 10 R5).
+const PREVIEW = process.env.NEXT_PUBLIC_VERCEL_ENV === "preview";
 
 const NOTICE_TEXT: Record<Notice, string> = {
   // 검증값이 없는 브라우저에서는 진짜 메일 링크와 아무 code를 구분할 수 없어서 단정하지 않습니다.
   confirmed: "메일 인증을 마쳤다면 로그인해 주세요",
   "link-error": "링크가 만료됐거나 잘못됐어요. 다시 시도해 주세요",
+  "oauth-error": "GitHub · Google 로그인을 마치지 못했어요. 다시 시도해 주세요",
 };
 const MIN_PASSWORD = 8;
 const noSubscribe = () => () => {};
@@ -34,19 +39,38 @@ export function LoginForm({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sentTo, setSentTo] = useState<string | null>(null);
+  const [redirecting, setRedirecting] = useState<Provider | null>(null);
+  const [socialError, setSocialError] = useState<string | null>(null);
   // 만료 링크 오류가 쿼리 대신 해시(#error=…)로 오는 경우 (서버에서는 해시를 볼 수 없음)
   const hashError = useSyncExternalStore(
     noSubscribe,
     () => window.location.hash.includes("error="),
     () => false,
   );
-  const notice: Notice | null = hashError ? "link-error" : initialNotice;
+  // 콜백이 정한 안내(쿼리)가 먼저. OAuth 오류 해시가 따라와도 메일 링크 안내로 바꾸지 않습니다.
+  const notice: Notice | null =
+    initialNotice ?? (hashError ? "link-error" : null);
 
   const switchMode = (value: Mode) => {
     setMode(value);
     setError(null);
     setSentTo(null);
   };
+
+  async function continueWith(provider: Provider, name: string) {
+    setRedirecting(provider);
+    setSocialError(null);
+    const { error } = await createClient().auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}&via=oauth`,
+      },
+    });
+    // 성공하면 브라우저가 제공자 화면으로 떠나므로 잠금을 풀지 않습니다.
+    if (!error) return;
+    setRedirecting(null);
+    setSocialError(`지금은 ${name} 로그인을 쓸 수 없어요`);
+  }
 
   async function onSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -197,19 +221,28 @@ export function LoginForm({
         또는
       </p>
       <div className="flex flex-col gap-2">
-        {/* GitHub · Google 로그인은 다음 명세 (원격에서 아직 꺼져 있음) */}
-        {SOCIAL.map(({ name, icon }) => (
+        {SOCIAL.map(({ provider, name, icon }) => (
           <button
-            key={name}
+            key={provider}
             type="button"
-            disabled
-            className="flex min-h-11 items-center justify-center gap-2 rounded-full border-2 border-ink bg-surface font-semibold text-ink-muted"
+            disabled={PREVIEW || redirecting !== null}
+            onClick={() => continueWith(provider, name)}
+            className="flex min-h-11 items-center justify-center gap-2 rounded-full border-2 border-ink bg-surface font-semibold disabled:text-ink-muted"
           >
             {icon}
-            {name}로 계속하기
-            <Soon />
+            {redirecting === provider ? "이동 중..." : `${name}로 계속하기`}
           </button>
         ))}
+        {PREVIEW && (
+          <p className="text-center text-sm text-ink-muted">
+            미리보기에서는 이메일 로그인만 돼요
+          </p>
+        )}
+        {socialError && (
+          <p role="alert" className="text-center text-sm text-danger">
+            {socialError}
+          </p>
+        )}
       </div>
 
       <p className="mt-6 text-center text-sm text-ink-muted">
@@ -225,8 +258,9 @@ export function LoginForm({
 const inputClass =
   "min-h-11 rounded-xl border-2 border-ink bg-surface px-3 text-base placeholder:text-ink-muted";
 
-const SOCIAL = [
+const SOCIAL: { provider: Provider; name: string; icon: React.ReactNode }[] = [
   {
+    provider: "github",
     name: "GitHub",
     icon: (
       <svg
@@ -241,16 +275,26 @@ const SOCIAL = [
     ),
   },
   {
+    provider: "google",
     name: "Google",
     icon: (
-      <svg
-        width="18"
-        height="18"
-        viewBox="0 0 24 24"
-        fill="currentColor"
-        aria-hidden="true"
-      >
-        <path d="M12.48 10.92v3.28h7.84c-.24 1.84-.85 3.19-1.79 4.13-1.15 1.15-2.93 2.4-6.05 2.4-4.83 0-8.6-3.89-8.6-8.72s3.77-8.72 8.6-8.72c2.6 0 4.51 1.03 5.91 2.35l2.31-2.31C18.75 1.44 16.13 0 12.48 0 5.87 0 .31 5.39.31 12s5.56 12 12.17 12c3.57 0 6.27-1.17 8.37-3.36 2.16-2.16 2.84-5.21 2.84-7.67 0-.76-.05-1.47-.17-2.05H12.48z" />
+      <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+        <path
+          fill="#EA4335"
+          d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"
+        />
+        <path
+          fill="#4285F4"
+          d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"
+        />
+        <path
+          fill="#FBBC05"
+          d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"
+        />
+        <path
+          fill="#34A853"
+          d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"
+        />
       </svg>
     ),
   },
