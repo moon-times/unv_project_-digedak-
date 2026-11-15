@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { assignChords, diatonicCandidates, scoreChordForNotes } from "./chords";
+import {
+  assignChords,
+  diatonicCandidates,
+  recommendCandidates,
+  scoreChordForNotes,
+} from "./chords";
 import { melodyOf } from "./testUtils";
 import type { Key } from "./theory";
 
@@ -133,5 +138,37 @@ describe("assignChords", () => {
 
   it("빈 멜로디는 빈 진행", () => {
     expect(assignChords([], C_MAJOR)).toEqual({ chords: [], romans: [] });
+  });
+});
+
+describe("recommendCandidates (명세 11)", () => {
+  it("C장조: 다이어토닉 6개 + C단조에서 빌린 Cm · Eb · Fm · Ab · Bb (G는 한 번만)", () => {
+    const list = recommendCandidates(C_MAJOR);
+    expect(list.filter((c) => !c.borrowed).map((c) => c.symbol)).toEqual([
+      "C",
+      "Dm",
+      "Em",
+      "F",
+      "G",
+      "Am",
+    ]);
+    expect(list.filter((c) => c.borrowed).map((c) => c.symbol)).toEqual([
+      "Cm",
+      "Eb",
+      "Fm",
+      "Ab",
+      "Bb",
+    ]);
+  });
+
+  it("A단조: A장조에서 빌린 A · Bm · C#m · D · F#m", () => {
+    const borrowed = recommendCandidates(A_MINOR).filter((c) => c.borrowed);
+    expect(borrowed.map((c) => c.symbol)).toEqual([
+      "A",
+      "Bm",
+      "C#m",
+      "D",
+      "F#m",
+    ]);
   });
 });
