@@ -12,20 +12,22 @@ export async function GET(request: NextRequest) {
   const to = (path: string) => NextResponse.redirect(new URL(path, origin));
   // OAuth(LoginForm이 via=oauth를 붙임)는 취소 · 실패를 메일 링크 오류와 다르게 안내합니다.
   const oauth = searchParams.get("via") === "oauth";
-  const failed = oauth
-    ? "/login?notice=oauth-error"
-    : "/login?notice=link-error";
+  const next = safeNext(searchParams.get("next"));
+  // 실패해도 돌아갈 곳을 넘겨, 다시 로그인하면 원래 화면(게스트 곡 등)으로 가게 합니다.
+  const notice = (kind: string) =>
+    `/login?notice=${kind}&next=${encodeURIComponent(next)}`;
+  const failed = notice(oauth ? "oauth-error" : "link-error");
 
   if (searchParams.has("error") || !code) return to(failed);
 
   const supabase = await createClient();
   const { error } = await supabase.auth.exchangeCodeForSession(code);
-  if (!error) return to(safeNext(searchParams.get("next")));
+  if (!error) return to(next);
 
   // 다른 브라우저에서 링크를 열면 이 브라우저에 PKCE 검증값이 없습니다. 메일 인증 자체는 끝난 상태입니다.
   return to(
     !oauth && isAuthPKCECodeVerifierMissingError(error)
-      ? "/login?notice=confirmed"
+      ? notice("confirmed")
       : failed,
   );
 }
