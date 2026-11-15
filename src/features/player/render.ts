@@ -3,7 +3,7 @@
 import { TRACK_IDS, type SongState, type TrackId } from "@/types/song";
 import { createInstrument, noteFor, toMidiVelocity } from "./instruments";
 import { trackGains } from "./mix";
-import { connectReverb, reverbSends } from "./reverb";
+import { connectReverb, REVERB_SECONDS, reverbSends } from "./reverb";
 import { playbackEndStep, scheduleSong, secondsPerStep } from "./schedule";
 
 export type RenderOptions = {
@@ -28,7 +28,11 @@ const RENDER_QUANTUM = 128;
  */
 export async function renderSong(
   song: SongState,
-  { sampleRate = 44100, tailSeconds = 2, onProgress }: RenderOptions = {},
+  {
+    sampleRate = 44100,
+    tailSeconds = Math.max(2, REVERB_SECONDS + 0.2),
+    onProgress,
+  }: RenderOptions = {},
 ): Promise<AudioBuffer> {
   const smplr = await import("smplr");
   const seconds =
