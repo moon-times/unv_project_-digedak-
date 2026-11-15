@@ -2,6 +2,7 @@
 // Tone과 smplr는 브라우저에서만 동작하므로 init()에서 동적으로 불러옵니다(서버 렌더링 안전).
 //
 // 신호 흐름: 악기 → 트랙 게인(볼륨·뮤트·솔로) → 마스터 게인 → 스피커
+//                         └→ 울림 보내기 게인 → 공용 울림(Convolver) → 마스터 (reverb.ts)
 import type { Part } from "tone";
 import {
   TRACK_IDS,
@@ -16,6 +17,7 @@ import {
   type Playable,
 } from "./instruments";
 import { trackGains } from "./mix";
+import { connectReverb, reverbSends } from "./reverb";
 import {
   playbackEndStep,
   secondsPerStep,
@@ -47,6 +49,8 @@ type Audio = {
   context: AudioContext;
   master: GainNode;
   channels: Record<TrackId, GainNode>;
+  /** 트랙별 울림 보내기 게인 */
+  sends: Record<TrackId, GainNode>;
 };
 
 export class Player {
@@ -112,7 +116,14 @@ export class Player {
       }),
     ) as Record<TrackId, GainNode>;
 
-    this.#audio = { tone, smplr, context, master, channels };
+    const sends = connectReverb(
+      context,
+      channels,
+      master,
+      reverbSends(this.#song?.tracks ?? []),
+    );
+
+    this.#audio = { tone, smplr, context, master, channels, sends };
     if (this.#song) await this.#apply(this.#song);
     this.#setState({ status: "ready" });
   }
@@ -259,14 +270,20 @@ export class Player {
     this.#audio.tone.getTransport().bpm.value = bpm;
   }
 
-  /** 트랙별 볼륨·뮤트·솔로를 반영합니다. */
+  /** 트랙별 볼륨·뮤트·솔로와 울림 양을 반영합니다. */
   applyMix(tracks: Track[]): void {
     if (!this.#audio) return;
-    const { context, channels } = this.#audio;
+    const { context, channels, sends } = this.#audio;
     const gains = trackGains(tracks);
+    const reverb = reverbSends(tracks);
     for (const id of TRACK_IDS) {
       channels[id].gain.setTargetAtTime(
         gains[id],
+        context.currentTime,
+        GAIN_SMOOTHING,
+      );
+      sends[id].gain.setTargetAtTime(
+        reverb[id],
         context.currentTime,
         GAIN_SMOOTHING,
       );

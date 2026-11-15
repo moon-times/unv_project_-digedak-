@@ -3,6 +3,8 @@ import * as smplr from "smplr";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createEmptySong, type SongState } from "@/types/song";
 import { renderSong, type RenderProgress } from "./render";
+import { REVERB_SECONDS } from "./reverb";
+import { playbackEndStep, secondsPerStep } from "./schedule";
 
 vi.mock("smplr", () => {
   const instrument = () => ({
@@ -31,6 +33,19 @@ class FakeOfflineAudioContext {
     readonly sampleRate: number,
   ) {
     FakeOfflineAudioContext.last = this;
+  }
+  convolvers: { buffer: unknown; connect: unknown }[] = [];
+  createConvolver() {
+    const convolver = { buffer: null, connect: vi.fn() };
+    this.convolvers.push(convolver);
+    return convolver;
+  }
+  createBuffer(channels: number, length: number) {
+    const data = Array.from(
+      { length: channels },
+      () => new Float32Array(length),
+    );
+    return { length, getChannelData: (c: number) => data[c] };
   }
   createGain() {
     return { gain: { value: 1 }, connect: vi.fn() };
@@ -105,5 +120,19 @@ describe("renderSong 진행 알림", () => {
   it("onProgress가 없으면 멈추지 않음 (기존 동작 그대로)", async () => {
     await renderSong(songWithMelody());
     expect(FakeOfflineAudioContext.last.suspends).toEqual([]);
+  });
+});
+
+describe("울림 (명세 12)", () => {
+  it("Convolver를 하나 연결하고, 끝 여유가 울림 길이보다 길다", async () => {
+    const song = songWithMelody();
+    await renderSong(song, { sampleRate: 1000 });
+    const context = FakeOfflineAudioContext.last;
+    expect(context.convolvers).toHaveLength(1);
+    expect(context.convolvers[0].buffer).not.toBeNull();
+    const songSeconds = playbackEndStep(song) * secondsPerStep(song.bpm);
+    expect(context.length / 1000 - songSeconds).toBeGreaterThanOrEqual(
+      REVERB_SECONDS,
+    );
   });
 });
