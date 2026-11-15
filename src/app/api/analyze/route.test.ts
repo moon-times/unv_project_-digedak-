@@ -13,8 +13,11 @@ vi.mock("@/lib/supabase/server", () => ({
 }));
 const polish = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/llm/polishExplanation", () => ({ polishExplanation: polish }));
+const recommend = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/llm/recommendChords", () => ({ recommendChords: recommend }));
 
-const { POST, DAILY_POLISH_LIMIT } = await import("./route");
+const { POST, DAILY_POLISH_LIMIT, DAILY_RECOMMEND_LIMIT } =
+  await import("./route");
 
 const analysis = {
   key: "C major",
@@ -114,5 +117,71 @@ describe("POST /api/analyze", () => {
 
     supabase.rpc.mockResolvedValue({ data: null, error: { message: "db" } });
     expect((await call(body)).json).toEqual({ ...analysis, polished: false });
+  });
+});
+
+describe("POST /api/analyze 재추천 (명세 11)", () => {
+  const melody = [{ pitch: 60, start: 0, duration: 4, velocity: 0.8 }];
+  const ask = (request: unknown, extra: object = {}) =>
+    call({ analysis, melody, request, ...extra });
+
+  beforeEach(() => recommend.mockReset());
+
+  it("모르는 request · 멜로디 없는 재추천은 400", async () => {
+    expect((await ask("jazzier")).status).toBe(400);
+    expect((await call({ analysis, request: "sadder" })).status).toBe(400);
+    expect(recommend).not.toHaveBeenCalled();
+  });
+
+  it("성공하면 코드 · 설명만 바뀌고, 재추천 한도(recommend)를 씀", async () => {
+    const chords = [
+      { symbol: "Am", start: 0, duration: 16 },
+      analysis.chords[1],
+    ];
+    recommend.mockResolvedValue({
+      chords,
+      explanation: "C장조 첫 마디를 Am으로 바꿨어요.",
+      changed: 1,
+    });
+    const { json } = await ask("sadder");
+    expect(supabase.rpc).toHaveBeenCalledWith("consume_llm_quota", {
+      daily_limit: DAILY_RECOMMEND_LIMIT,
+      usage_kind: "recommend",
+    });
+    expect(recommend).toHaveBeenCalledWith(
+      expect.objectContaining({ melody, request: "sadder", key: "C major" }),
+    );
+    expect(json).toEqual({
+      ...analysis,
+      chords,
+      explanation: "C장조 첫 마디를 Am으로 바꿨어요.",
+      recommended: true,
+      changed: 1,
+    });
+    expect(polish).not.toHaveBeenCalled();
+  });
+
+  it("실패하면 곡 그대로, 한도 초과는 limited, 키 없으면 한도 안 깎고 unavailable", async () => {
+    recommend.mockResolvedValue(null);
+    expect((await ask("brighter")).json).toEqual({
+      ...analysis,
+      recommended: false,
+    });
+
+    supabase.rpc.mockResolvedValue({ data: false, error: null });
+    expect((await ask("brighter")).json).toEqual({
+      ...analysis,
+      recommended: false,
+      limited: true,
+    });
+
+    supabase.rpc.mockClear();
+    vi.stubEnv("ANTHROPIC_API_KEY", "");
+    expect((await ask("brighter")).json).toEqual({
+      ...analysis,
+      recommended: false,
+      unavailable: true,
+    });
+    expect(supabase.rpc).not.toHaveBeenCalled();
   });
 });

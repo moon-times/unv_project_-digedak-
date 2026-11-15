@@ -9,6 +9,11 @@ import type { SongState } from "@/types/song";
 // 우리가 넣은 다듬은 문장. 이 문장으로 바뀐 것은 다시 다듬지 않습니다.
 let lastPolished: string | null = null;
 
+/** 이미 다듬어진 설명이라 다시 다듬지 않게 표시합니다 (AI 재추천이 쓴 설명, 되돌린 설명 · 명세 11 R6). */
+export function markPolished(explanation: string) {
+  lastPolished = explanation;
+}
+
 /** 테스트용 */
 export function resetExplanationPolish() {
   lastPolished = null;

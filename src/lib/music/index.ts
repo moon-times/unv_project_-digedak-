@@ -3,9 +3,11 @@ export { analyzeSong, type AnalyzeOptions } from "./analyze";
 export {
   assignChords,
   diatonicCandidates,
+  recommendCandidates,
   scoreChordForNotes,
   type ChordAssignment,
   type ChordCandidate,
+  type RecommendCandidate,
 } from "./chords";
 export { buildExplanation, koreanKeyName, STYLE_LABEL } from "./explain";
 export { detectKey, pitchClassHistogram, type KeyDetection } from "./key";

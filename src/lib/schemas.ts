@@ -115,17 +115,22 @@ export const AnalysisResultSchema: z.ZodType<AnalysisResult> = z.object({
   explanation: z.string(),
 });
 
-/** POST /api/analyze 요청. analysis는 규칙 엔진 결과.
+/** POST /api/analyze 요청. analysis는 규칙 엔진 결과, request가 있으면 코드 재추천(명세 11).
  * 서버가 LLM에 그대로 넘기므로 글자 수 · 개수에 상한을 둡니다 (가장 긴 코드 기호 "F#m7b5/A#"가 9자).
  */
-export const AnalyzeRequestSchema = z.object({
-  analysis: AnalysisResultSchema.refine(
-    (a) =>
-      a.explanation.length <= 1000 &&
-      a.key.length <= 20 &&
-      a.chords.length <= 512 &&
-      a.chords.every((chord) => chord.symbol.length <= 12),
-    "analysis가 너무 큽니다",
-  ),
-});
+export const AnalyzeRequestSchema = z
+  .object({
+    analysis: AnalysisResultSchema.refine(
+      (a) =>
+        a.explanation.length <= 1000 &&
+        a.key.length <= 20 &&
+        a.chords.length <= 512 &&
+        a.chords.every((chord) => chord.symbol.length <= 12),
+      "analysis가 너무 큽니다",
+    ),
+    // AI 코드 재추천(명세 11). 없으면 설명 다듬기. 재추천은 멜로디로 코드를 검사하므로 멜로디가 필요합니다.
+    request: z.enum(["brighter", "sadder"]).optional(),
+    melody: z.array(NoteSchema).max(2000).optional(),
+  })
+  .refine((r) => !r.request || r.melody, "재추천에는 melody가 필요합니다");
 export type AnalyzeRequest = z.infer<typeof AnalyzeRequestSchema>;

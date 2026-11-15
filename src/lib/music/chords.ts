@@ -49,6 +49,29 @@ export function diatonicCandidates(key: Key): ChordCandidate[] {
   });
 }
 
+export type RecommendCandidate = ChordCandidate & {
+  /** 같은 으뜸음의 반대 조(C장조라면 C단조)에서 빌려 온 화음 */
+  borrowed: boolean;
+};
+
+/**
+ * AI 재추천 후보 (명세 11): 곡 키의 다이어토닉 화음 + 같은 으뜸음 반대 조의 다이어토닉 화음.
+ * 두 조에 다 있는 화음(예: C장조 · C단조의 G)은 한 번만 넣습니다.
+ */
+export function recommendCandidates(key: Key): RecommendCandidate[] {
+  const own = diatonicCandidates(key).map((c) => ({ ...c, borrowed: false }));
+  const parallel: Key = {
+    tonic: key.tonic,
+    mode: key.mode === "major" ? "minor" : "major",
+  };
+  const borrowed = diatonicCandidates(parallel)
+    .filter(
+      (c) => !own.some((o) => o.root === c.root && o.quality === c.quality),
+    )
+    .map((c) => ({ ...c, borrowed: true }));
+  return [...own, ...borrowed];
+}
+
 /**
  * 한 구간(start ~ end step)의 멜로디가 코드와 얼마나 맞는지. 대략 -1 ~ 1.25.
  * 구성음이면 +, 음계음이지만 구성음이 아니면 약한 -, 음계 밖의 음이면 강한 -.
