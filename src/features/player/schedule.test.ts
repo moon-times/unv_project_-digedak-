@@ -71,7 +71,7 @@ describe("mix", () => {
   it("뮤트·솔로·볼륨을 게인으로 바꾼다", () => {
     const tracks = createEmptySong().tracks;
     expect(trackGains(tracks)).toEqual({
-      melody: 1,
+      melody: 2, // 멜로디 기본 크기 2배
       drums: 1,
       bass: 1,
       keys: 1,
