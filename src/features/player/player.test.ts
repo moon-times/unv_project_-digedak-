@@ -247,7 +247,7 @@ describe("Player", () => {
       0.01,
     );
     expect(fake.state.gains[1].setTargetAtTime).toHaveBeenLastCalledWith(
-      2, // 멜로디 기본 크기 2배
+      10 ** (16 / 20), // 멜로디 기본 크기 +16dB
       0,
       0.01,
     );

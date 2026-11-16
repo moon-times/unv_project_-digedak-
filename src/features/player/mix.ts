@@ -1,8 +1,10 @@
 // 트랙별 볼륨·뮤트·솔로를 실제 게인 값으로 바꿉니다.
 import { TRACK_IDS, type Track, type TrackId } from "@/types/song";
 
-/** 슬라이더 0dB일 때의 기본 크기. 멜로디가 반주에 묻혀 2배(+6dB)로 둡니다(2026-11-16 사용자 청취). */
-const BASE_GAIN: Partial<Record<TrackId, number>> = { melody: 2 };
+/** 슬라이더 0dB일 때의 기본 크기. 멜로디가 반주에 묻혀 +16dB로 둡니다(2026-11-16 사용자 청취, +6dB로도 부족). */
+const BASE_GAIN: Partial<Record<TrackId, number>> = {
+  melody: dbToGain(16),
+};
 
 export function dbToGain(db: number): number {
   return Math.pow(10, db / 20);
