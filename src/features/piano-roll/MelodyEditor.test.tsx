@@ -77,6 +77,16 @@ describe("멜로디 편집", () => {
     expect(song().melody[1].start).toBe(5);
   });
 
+  test("Shift+→ · Shift+← 로 길이를 격자 한 칸씩, 최소 한 칸", () => {
+    render(<Timeline editable />);
+    fireEvent.focus(notes()[1]);
+    fireEvent.keyDown(notes()[1], { key: "ArrowRight", shiftKey: true });
+    expect(song().melody[1]).toMatchObject({ start: 4, duration: 5 });
+    for (let i = 0; i < 6; i++)
+      fireEvent.keyDown(notes()[1], { key: "ArrowLeft", shiftKey: true });
+    expect(song().melody[1]).toMatchObject({ start: 4, duration: 1 });
+  });
+
   test("끌면 놓을 때 한 번만 옮긴다 (오른쪽 2칸, 위로 3반음)", () => {
     const setMelody = vi.spyOn(useSongStore.getState(), "setMelody");
     render(<Timeline editable />);
