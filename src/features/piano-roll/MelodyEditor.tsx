@@ -2,7 +2,7 @@
 // 보정 단계에서 타임라인 멜로디 줄을 편집합니다.
 // - 빈 칸 두 번 누르기: 음 넣기 / 음 누르기: 선택 / Delete · Backspace: 지우기 / Esc: 선택 풀기
 // - 음 몸통 끌기: 시간 · 높이 이동 / 오른쪽 끝 끌기: 길이
-// - 방향키: ←/→ 격자 한 칸, ↑/↓ 반음, Shift+↑/↓ 옥타브
+// - 방향키: ←/→ 격자 한 칸, ↑/↓ 반음, Shift+↑/↓ 옥타브, Shift+←/→ 길이 격자 한 칸
 // 끄는 동안에는 이 컴포넌트 안에서만 다시 그리고, 놓을 때 한 번만 setMelody 합니다(자동 저장 · 재생기 재빌드 줄이기).
 import {
   useEffect,
@@ -157,6 +157,11 @@ export function MelodyEditor({
       const next = movedNote(note, deltaSteps, deltaPitch, grid);
       if (!sameNote(next, note)) commit(index, next);
     };
+    const resize = (deltaSteps: number) => {
+      e.preventDefault();
+      const next = resizedNote(note, deltaSteps, grid);
+      if (!sameNote(next, note)) commit(index, next);
+    };
     switch (e.key) {
       case "Delete":
       case "Backspace":
@@ -168,9 +173,9 @@ export function MelodyEditor({
         (e.currentTarget as HTMLElement).blur();
         break;
       case "ArrowLeft":
-        return nudge(-grid, 0);
+        return e.shiftKey ? resize(-grid) : nudge(-grid, 0);
       case "ArrowRight":
-        return nudge(grid, 0);
+        return e.shiftKey ? resize(grid) : nudge(grid, 0);
       case "ArrowUp":
         return nudge(0, e.shiftKey ? 12 : 1);
       case "ArrowDown":
